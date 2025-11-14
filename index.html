@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal Tycoon</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header id="global-header">
+        <div class="game-panel-wrapper">
+            <div id="game-controls" class="game-panel">
+                <button class="control-btn" data-command="help">Help</button>
+                <button class="control-btn" data-command="status">Status</button>
+                <button class="control-btn" data-command="fire">Fire Employee</button>
+                <button class="control-btn" data-command="reset">Reset Game</button>
+                <button class="control-btn next-week-btn" data-command="nextweek">Next Week</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="info-block-wrapper">
+        <div class="info-block">
+            <div id="game-stats" class="game-panel">
+                <h2>Статистика</h2>
+                <p>Неделя: <span id="stat-week">1</span></p>
+                <p>Деньги: $<span id="stat-money">20000</span></p>
+                <p>Репутация: <span id="stat-reputation">15</span></p>
+            </div>
+
+            <div id="hired-employees-panel" class="game-panel">
+                <h2>Нанятые сотрудники</h2>
+                <div id="hired-employees-list">
+                    <!-- Нанятые сотрудники будут генерироваться здесь JS -->
+                </div>
+            </div>
+
+            <div id="active-projects-panel" class="game-panel">
+                <h2>Активные проекты</h2>
+                <div id="active-projects-list">
+                    <!-- Активные проекты будут генерироваться здесь JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="game-layout-wrapper">
+        <div class="game-layout">
+            <div id="terminal-container" class="terminal-container">
+                <div class="terminal-output" id="terminal-output"></div>
+                <div class="terminal-input-container">
+                    <span class="prompt">$</span> <input type="text" id="terminal-input" class="terminal-input" autofocus>
+                </div>
+            </div>
+
+            <div id="hire-fire-scroll-area" class="">
+                <div id="hire-panel" class="game-panel">
+                    <h2>Нанять сотрудника</h2>
+                    <div class="panel-content-scroll">
+                        <!-- Карточки сотрудников будут генерироваться здесь JS -->
+                    </div>
+                </div>
+
+                <div id="fire-panel" class="game-panel hidden">
+                    <h2>Уволить сотрудника</h2>
+                    <div class="panel-content-scroll">
+                        <!-- Список сотрудников для увольнения будет генерироваться здесь JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div id="projects-scroll-area" class="">
+                <div id="projects-panel" class="game-panel">
+                    <h2>Доступные проекты</h2>
+                    <div class="panel-content-scroll">
+                        <!-- Карточки проектов будут генерироваться здесь JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

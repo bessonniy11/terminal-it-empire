@@ -1,0 +1,200 @@
+html {
+    height: 100%;
+    overflow: hidden; /* Убираем общий скролл с html */
+}
+
+:root {
+    --header-height: 60px; /* Примерная высота хедера */
+    --info-block-height: 220px; /* Увеличена высота info-block */
+    --game-layout-max-width: 1400px;
+    --gap-between-sections: 20px;
+    --terminal-width: 400px;
+}
+
+body {
+    margin: 0;
+    font-family: 'Consolas', 'Courier New', monospace;
+    background-color: #282c34;
+    color: #abb2bf;
+    overflow: hidden; /* Убираем общий скролл с body */
+    height: 100%; /* Делаем body занимающим 100% высоты html */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: calc(var(--header-height) + var(--info-block-height) + var(--gap-between-sections)); /* Отступ сверху для фиксированного хедера и info-block */
+}
+
+#global-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: #000;
+    padding: 10px 20px;
+    box-shadow: 0 2px 10px rgba(0, 255, 0, 0.3);
+    z-index: 1001;
+    box-sizing: border-box;
+    height: var(--header-height);
+    display: flex;
+    justify-content: center; /* Центрируем содержимое хедера */
+    align-items: center;
+}
+
+.game-panel-wrapper {
+    width: 100%;
+    max-width: var(--game-layout-max-width); /* Ограничиваем общую ширину */
+    display: flex;
+    justify-content: flex-end; /* Кнопки справа */
+    align-items: center;
+    gap: 10px; /* Отступ между кнопками */
+    height: 100%; /* Занимаем всю высоту хедера */
+}
+
+#global-header .game-panel {
+    background-color: transparent; /* Убираем фон панели, так как он уже у хедера */
+    border: none; /* Убираем рамку */
+    box-shadow: none; /* Убираем тень */
+    padding: 0; /* Убираем паддинг */
+}
+
+.info-block-wrapper {
+    position: fixed;
+    top: var(--header-height); /* Позиционируем сразу под хедером */
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    background-color: #282c34;
+    padding: 10px 20px;
+    box-sizing: border-box;
+    height: var(--info-block-height);
+    display: flex;
+    justify-content: center; /* Центрируем содержимое инфо-блока */
+    align-items: stretch; /* Растягиваем дочерний грид */
+}
+
+.info-block {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--gap-between-sections);
+    width: 100%;
+    max-width: var(--game-layout-max-width); /* Ограничиваем общую ширину */
+    height: 100%; /* Занимает всю высоту своего враппера */
+    align-items: stretch; /* Убеждаемся, что элементы грида растягиваются по высоте */
+}
+
+.info-block .game-panel {
+    padding: 10px;
+    height: 100%; /* Панели внутри инфо-блока занимают всю высоту */
+    box-sizing: border-box;
+    border: 1px solid #333; /* Добавляем рамку к панелям info-block */
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+    min-height: 0; /* Добавляем, чтобы грид-элементы могли сжиматься и растягиваться корректно */
+}
+
+.info-block #game-stats { /* Статистика */
+    border-right: 1px solid #0f0;
+}
+
+.info-block #hired-employees-panel { /* Нанятые сотрудники */
+    border-right: 1px solid #0f0;
+}
+
+.game-layout-wrapper {
+    position: fixed;
+    left: 0;
+    top: calc(var(--header-height) + var(--info-block-height) + var(--gap-between-sections)); /* Отступ от хедера и info-block */
+    width: 100%;
+    height: calc(100% - var(--header-height) - var(--info-block-height) - var(--gap-between-sections) * 2); /* Вся оставшаяся высота минус 2 gaps */
+    display: flex;
+    justify-content: center; /* Центрируем содержимое */
+    align-items: stretch; /* Растягиваем дочерние элементы по высоте */
+}
+
+.game-layout {
+    display: grid; /* Возвращаем grid для трехколоночного макета */
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--gap-between-sections);
+    width: 100%;
+    max-width: var(--game-layout-max-width); /* Ограничиваем общую ширину */
+    height: 100%;
+    box-sizing: border-box;
+}
+
+#terminal-container {
+    flex: none; /* Отменяем flex-свойства, так как теперь это грид-элемент */
+    /* flex: 0 0 var(--terminal-width); */ /* Удаляем, так как грид управляет шириной */
+    display: flex;
+    flex-direction: column;
+    background-color: #000;
+    border: 1px solid #333; /* Добавляем обратно рамку для терминала */
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+    height: 100%; /* Занимает всю доступную высоту родителя */
+    border-right: 1px solid #0f0; /* Добавляем разделитель справа для первой колонки */
+}
+
+#main-content-area {
+    /* Этот блок больше не нужен как отдельный flex-контейнер для правых панелей */
+    /* Его содержимое теперь будет прямыми дочерними элементами .game-layout */
+    display: none; /* Скрываем его */
+}
+
+#hire-fire-scroll-area {
+    height: 100%; /* Занимает всю доступную высоту */
+    border-right: 1px solid #0f0; /* Разделитель справа для второй колонки */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    flex-grow: 1;
+    flex-basis: 0;
+    min-height: 0;
+}
+
+#projects-scroll-area {
+    height: 100%; /* Занимает всю доступную высоту */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    flex-grow: 1;
+    flex-basis: 0;
+    min-height: 0;
+}
+
+/* Переопределяем стили для панелей внутри info-block, чтобы убрать лишние рамки */
+/* Это правило теперь не нужно, так как рамки добавляются к .info-block .game-panel */
+/* .info-block .game-panel { */
+/*     border: none; */
+/*     box-shadow: none; */
+/* } */
+
+/* Панели, которые должны быть всегда видны и не сжиматься */
+/* #game-stats, */
+/* #active-projects-panel, */
+/* #hired-employees-panel { */
+/*     flex-shrink: 0; */
+/* } */
+
+/* #game-stats { */
+/*     // Для game-stats не нужно min-height, т.к. ее высота будет определяться гридом */
+/*     // min-height: fit-content; */
+/* } */
+
+/* #active-projects-panel, */
+/* #hired-employees-panel { */
+/*     // max-height: 120px; */ /* Удаляем, чтобы высота определялась гридом */
+/*     // overflow-y: auto; */ /* Удаляем, скролл будет внутри списков */
+/* } */
+
+/* Новые прокручиваемые секции */
+.scrollable-section {
+    flex-grow: 1; /* Занимает оставшееся пространство */
+    flex-basis: 0; /* Позволяет равномерно распределять оставшееся пространство */
+    overflow-y: auto;
+    min-height: 0; /* Важно: позволяет элементу flex сжиматься ниже его размера содержимого */
+    padding-right: 5px; /* Для скроллбара */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
