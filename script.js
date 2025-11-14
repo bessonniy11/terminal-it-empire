@@ -21,6 +21,7 @@ const cancelFireBtn = document.getElementById('cancel-fire-btn');
 
 const SAVE_KEY = 'tib-save';
 const SCHEMA_VERSION = 1;
+const LOG_LIMIT = 200;
 
 function hasLocalStorage() {
     try {
@@ -34,6 +35,9 @@ function hasLocalStorage() {
 function cloneInitialState() {
     const clone = JSON.parse(JSON.stringify(GAME_DATA.initialState));
     clone.schemaVersion = SCHEMA_VERSION;
+    if (!Array.isArray(clone.log)) {
+        clone.log = [];
+    }
     return clone;
 }
 
@@ -54,7 +58,11 @@ function loadState() {
         if (parsed.schemaVersion !== SCHEMA_VERSION) {
             return fallback;
         }
-        return { ...fallback, ...parsed };
+        const merged = { ...fallback, ...parsed };
+        if (!Array.isArray(merged.log)) {
+            merged.log = [];
+        }
+        return merged;
     } catch (error) {
         console.warn('Failed to load state, using defaults', error);
         return fallback;
@@ -80,26 +88,26 @@ const gameLayout = document.querySelector('.game-layout');
 class Game {
     constructor() {
         this.state = loadState();
+        if (!Array.isArray(this.state.log)) {
+            this.state.log = [];
+        }
         this.commands = {};
         this.initCommands();
         this.employeeIdPendingFire = null;
     }
 
     init() {
-        this.print('Добро пожаловать в Terminal IT Empire!');
-        this.print('Управляйте своей IT-компанией с помощью команд.');
-        this.print('Наберите \'help\' для списка доступных команд.');
-        // Удаляем вывод статистики, теперь она будет в game-stats
-        // this.print(`Неделя: ${this.state.currentWeek} | Деньги: $${this.state.money} | Репутация: ${this.state.reputation}`);
-        this.refreshAllPanels(); // Новая функция для обновления всех панелей
+        const hadLog = this.restoreLog();
+        if (!hadLog) {
+            this.print('Добро пожаловать в Terminal IT Empire!');
+            this.print('Управляйте своей IT-компанией с помощью команд.');
+            this.print('Наберите \'help\' для списка доступных команд.');
+        }
+        this.refreshAllPanels();
     }
 
     print(message, type = 'info') {
-        const line = document.createElement('div');
-        line.textContent = message;
-        line.classList.add(type);
-        terminalOutput.appendChild(line);
-        terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        this.appendLogEntry(message, type, { store: true });
     }
 
     initCommands() {
@@ -535,13 +543,42 @@ class Game {
         this.init(); // Инициализируем игру заново
     }
 
+    restoreLog() {
+        terminalOutput.innerHTML = '';
+        if (!Array.isArray(this.state.log) || this.state.log.length === 0) {
+            return false;
+        }
+        this.state.log.forEach(entry => {
+            this.appendLogEntry(entry.message, entry.type, { store: false });
+        });
+        return true;
+    }
+
+    appendLogEntry(message, type = 'info', { store = true } = {}) {
+        const line = document.createElement('div');
+        line.textContent = message;
+        line.classList.add(type);
+        terminalOutput.appendChild(line);
+        terminalOutput.scrollTop = terminalOutput.scrollHeight;
+
+        if (store) {
+            if (!Array.isArray(this.state.log)) {
+                this.state.log = [];
+            }
+            this.state.log.push({ message, type });
+            if (this.state.log.length > LOG_LIMIT) {
+                this.state.log.splice(0, this.state.log.length - LOG_LIMIT);
+            }
+            this.persistState();
+        }
+    }
+
     persistState() {
         if (!this.state) {
             return;
         }
         saveState(this.state);
     }
-
 
     fireEmployeeById(employeeId) {
         const employeeIndex = this.state.employees.findIndex(emp => emp.id === employeeId);

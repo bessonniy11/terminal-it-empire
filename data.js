@@ -5,6 +5,7 @@
         reputation: 15, // Немного увеличенная стартовая репутация
         employees: [],
         projects: [],
+        log: [],
         currentWeek: 1,
         gameOver: false
     },
