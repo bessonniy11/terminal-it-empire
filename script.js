@@ -28,7 +28,7 @@ class Game {
     }
 
     init() {
-        this.print('Добро пожаловать в Terminal Tycoon!');
+        this.print('Добро пожаловать в Terminal IT Empire!');
         this.print('Управляйте своей IT-компанией с помощью команд.');
         this.print('Наберите \'help\' для списка доступных команд.');
         // Удаляем вывод статистики, теперь она будет в game-stats
