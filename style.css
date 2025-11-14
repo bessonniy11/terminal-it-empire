@@ -344,7 +344,7 @@ body {
 }
 .employee-item {
     position: relative;
-    padding: 12px 12px 12px 52px;
+    padding: 12px 52px 12px 12px;
     min-height: 52px;
 }
 .employee-item .emoji {
