@@ -185,9 +185,9 @@ class Game {
     renderHiredEmployees() {
         hiredEmployeesList.innerHTML = ''; // Очищаем список
         const employeeEmojis = {
-            'junior-dev': '👨‍💻',
-            'mid-dev': '🧑‍💻',
-            'senior-dev': '🧑‍🏫'
+            'junior-dev': '🧑‍💻',
+            'mid-dev': '🧑‍💻+🧠',
+            'senior-dev': '👨‍💻'
         };
 
         if (this.state.employees.length === 0) {
@@ -210,7 +210,7 @@ class Game {
                 emojiSpan.textContent = employeeEmojis[emp.type];
 
                 const infoSpan = document.createElement('span');
-                infoSpan.textContent = `${emp.name} (${emp.type}) - ID: ${emp.id}`;
+                infoSpan.textContent = `${emp.name} (${emp.type})`;
 
                 employeeItem.appendChild(removeBtn);
                 employeeItem.appendChild(emojiSpan);
