@@ -36,17 +36,54 @@ body {
     box-sizing: border-box;
     height: var(--header-height);
     display: flex;
-    justify-content: center;
+    justify-content: center; /* Возвращаем центрирование для game-panel-wrapper */
     align-items: center;
 }
+/* Удаляем эти стили, так как h1 теперь внутри .game-panel-wrapper */
+/* #global-header h1 { */
+/*     color: #0f0; */
+/*     margin: 0; */
+/*     font-size: 1.8em; */
+/*     font-weight: bold; */
+/*     flex-shrink: 0; */
+/* } */
+/* Перемещаем стили h1 из global-header внутрь .game-panel-wrapper */
+.game-panel-wrapper h1 {
+    color: #0f0;
+    margin: 0;
+    font-size: 1.8em;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.header-icon {
+    height: 40px; /* Размер иконки */
+    width: 40px;  /* Устанавливаем равную ширину для круглой формы */
+    object-fit: contain; /* Чтобы изображение не обрезалось, если оно не квадратное */
+    margin-right: 10px; /* Отступ справа от иконки */
+    flex-shrink: 0; /* Запрещаем сжиматься */
+    border: 1px solid #0f0; /* Акцентная обводка */
+    border-radius: 50%; /* Делаем иконку круглой */
+    padding: 2px; /* Небольшой отступ внутри обводки */
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.4); /* Небольшая тень для акцента */
+}
+
+.header-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Отступ между иконкой и текстом */
+    flex-shrink: 0;
+}
+
 .game-panel-wrapper {
     width: 100%;
-    max-width: var(--game-layout-max-width); /* Ограничиваем общую ширину */
+    max-width: var(--game-layout-max-width);
     display: flex;
-    justify-content: flex-end; /* Кнопки справа */
+    justify-content: space-between; /* Иконка+заголовок слева, кнопки справа */
     align-items: center;
-    gap: 10px; /* Отступ между кнопками */
-    height: 100%; /* Занимаем всю высоту хедера */
+    gap: 10px;
+    height: 100%;
+    margin: 0 auto; /* Центрируем wrapper */
 }
 #global-header .game-panel {
     background-color: transparent; /* Убираем фон панели, так как он уже у хедера */
@@ -263,11 +300,38 @@ body {
     align-items: center;
     gap: 10px;
 }
+.employee-item {
+    position: relative;
+    padding: 12px 12px 12px 52px;
+    min-height: 52px;
+}
 .employee-item .emoji {
     font-size: 1.5em;
 }
 .employee-item span, .active-project-item span {
     color: #0f0;
+}
+.fire-employee-trigger {
+    position: absolute;
+    top: 6px;
+    right: 6px; /* Перемещаем в правый верхний угол */
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid #dc3545;
+    background: rgba(220, 53, 69, 0.2);
+    color: #ff6b6b;
+    font-size: 1.1em;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+.fire-employee-trigger:hover {
+    background: rgba(220, 53, 69, 0.4);
+    box-shadow: 0 0 8px rgba(220, 53, 69, 0.5);
 }
 /* Стили для карточек сотрудников */
 .employee-card {
@@ -378,38 +442,6 @@ body {
 }
 .hidden {
     display: none !important;
-}
-/* Стили для панели увольнения */
-.fire-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-.fire-employee-item {
-    background-color: #3a3a3a;
-    border: 1px solid #555;
-    border-radius: 4px;
-    padding: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.fire-employee-item span {
-    color: #abb2bf;
-    font-size: 0.9em;
-}
-.fire-btn {
-    background-color: #dc3545;
-    color: #fff;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 3px;
-    font-size: 0.8em;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-.fire-btn:hover {
-    background-color: #c82333;
 }
 /* Кастомизация скроллбара */
 ::-webkit-scrollbar {
@@ -554,6 +586,73 @@ body {
     .game-panel {
         max-height: none;
     }
+
 }
 
 
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    padding: 20px;
+}
+
+.modal-overlay.visible {
+    display: flex;
+}
+
+.modal-content {
+    background-color: #0d0d0d;
+    border: 1px solid #0f0;
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 0 25px rgba(0, 255, 0, 0.2);
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #0f0;
+}
+
+.modal-content p {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #d7d7d7;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.modal-btn {
+    border: 1px solid #0f0;
+    background: transparent;
+    color: #0f0;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.modal-btn:hover {
+    background-color: rgba(0, 255, 0, 0.1);
+}
+
+.modal-btn.danger {
+    border-color: #dc3545;
+    color: #ff6b6b;
+}
+
+.modal-btn.danger:hover {
+    background-color: rgba(220, 53, 69, 0.15);
+}

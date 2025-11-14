@@ -4,15 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Terminal IT Empire</title>
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header id="global-header">
         <div class="game-panel-wrapper">
+            <div class="header-title-group">
+                <img src="icon.svg" alt="Terminal IT Empire Icon" class="header-icon">
+                <h1>Terminal IT Empire</h1>
+            </div>
             <div id="game-controls" class="game-panel">
                 <button class="control-btn" data-command="help">Help</button>
                 <button class="control-btn" data-command="status">Status</button>
-                <button class="control-btn" data-command="fire">Fire Employee</button>
                 <button class="control-btn" data-command="reset">Reset Game</button>
                 <button class="control-btn next-week-btn" data-command="nextweek">Next Week</button>
             </div>
@@ -60,13 +64,6 @@
                         <!-- Карточки сотрудников будут генерироваться здесь JS -->
                     </div>
                 </div>
-
-                <div id="fire-panel" class="game-panel hidden">
-                    <h2>Уволить сотрудника</h2>
-                    <div class="panel-content-scroll">
-                        <!-- Список сотрудников для увольнения будет генерироваться здесь JS -->
-                    </div>
-                </div>
             </div>
 
             <div id="projects-scroll-area" class="">
@@ -80,7 +77,20 @@
         </div>
     </div>
 
+    <div id="fire-confirm-modal" class="modal-overlay" aria-hidden="true">
+        <div class="modal-content">
+            <h3>Уволить сотрудника?</h3>
+            <p>Вы действительно хотите расстаться с <span id="fire-confirm-name"></span> (<span id="fire-confirm-role"></span>)?</p>
+            <div class="modal-actions">
+                <button id="confirm-fire-btn" class="modal-btn danger">Уволить</button>
+                <button id="cancel-fire-btn" class="modal-btn">Отмена</button>
+            </div>
+        </div>
+    </div>
+
     <script src="data.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
+
+

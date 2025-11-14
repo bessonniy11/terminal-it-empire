@@ -13,7 +13,11 @@ const hiredEmployeesPanel = document.getElementById('hired-employees-panel');
 const hiredEmployeesList = document.getElementById('hired-employees-list');
 const hirePanel = document.getElementById('hire-panel');
 const projectsPanel = document.getElementById('projects-panel');
-const firePanel = document.getElementById('fire-panel');
+const fireConfirmModal = document.getElementById('fire-confirm-modal');
+const fireConfirmName = document.getElementById('fire-confirm-name');
+const fireConfirmRole = document.getElementById('fire-confirm-role');
+const confirmFireBtn = document.getElementById('confirm-fire-btn');
+const cancelFireBtn = document.getElementById('cancel-fire-btn');
 
 // Удаляем ссылки на терминал-шторку и кнопку переключения, т.к. терминал всегда видим
 // const terminalDrawerContainer = document.getElementById('terminal-drawer-container');
@@ -25,6 +29,7 @@ class Game {
         this.state = JSON.parse(JSON.stringify(GAME_DATA.initialState));
         this.commands = {};
         this.initCommands();
+        this.employeeIdPendingFire = null;
     }
 
     init() {
@@ -51,11 +56,10 @@ class Game {
         this.commands.project = this.cmdProject.bind(this);
         this.commands.nextweek = this.cmdNextWeek.bind(this);
         this.commands.reset = this.cmdReset.bind(this);
-        this.commands.fire = this.cmdFire.bind(this);
     }
 
     handleCommand(input) {
-        if (this.state.gameOver && input.toLowerCase() !== 'reset' && !input.toLowerCase().startsWith('fire')) {
+        if (this.state.gameOver && input.toLowerCase() !== 'reset') {
             this.print('Игра окончена. Нажмите F5 для новой игры или наберите \'reset\' чтобы начать заново.');
             return;
         }
@@ -82,7 +86,6 @@ class Game {
         this.print('  project <название> - Начать новый проект (например, \'project Simple Landing Page\')');
         this.print('  nextweek - Перейти к следующей неделе');
         this.print('  reset - Начать новую игру');
-        this.print('  fire <id_сотрудника> - Уволить сотрудника (например, \'fire 1\')');
     }
 
     cmdStatus(args) {
@@ -140,7 +143,25 @@ class Game {
             this.state.employees.forEach(emp => {
                 const employeeItem = document.createElement('div');
                 employeeItem.classList.add('employee-item');
-                employeeItem.innerHTML = `<span class="emoji">${employeeEmojis[emp.type]}</span><span>${emp.name} (${emp.type}) - ID: ${emp.id}</span>`;
+                const removeBtn = document.createElement('button');
+                removeBtn.classList.add('fire-employee-trigger');
+                removeBtn.innerHTML = '&times;';
+                removeBtn.setAttribute('aria-label', `Remove ${emp.name}`);
+                removeBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    this.openFireModal(emp);
+                });
+
+                const emojiSpan = document.createElement('span');
+                emojiSpan.classList.add('emoji');
+                emojiSpan.textContent = employeeEmojis[emp.type];
+
+                const infoSpan = document.createElement('span');
+                infoSpan.textContent = `${emp.name} (${emp.type}) - ID: ${emp.id}`;
+
+                employeeItem.appendChild(removeBtn);
+                employeeItem.appendChild(emojiSpan);
+                employeeItem.appendChild(infoSpan);
                 hiredEmployeesList.appendChild(employeeItem);
             });
         }
@@ -217,7 +238,6 @@ class Game {
             } else if (this.state.reputation < projType.minReputation) {
                 isDisabled = true;
                 disableReason = `Требуется репутация ${projType.minReputation}+`;
-            } else {
                 for (const skill in projType.requiredSkills) {
                     if (totalSkills[skill] < projType.requiredSkills[skill]) {
                         isDisabled = true;
@@ -255,7 +275,6 @@ class Game {
         this.renderActiveProjects();
         this.renderHirePanel();
         this.renderProjectsPanel();
-        // Fire panel пока не рендерим, она скрыта по умолчанию и отображается по нажатию кнопки
     }
 
     cmdHire(args) {
@@ -412,7 +431,6 @@ class Game {
                 this.print(`Событие: \"${randomEvent.message}\" удалось предотвратить благодаря высокой репутации!`, 'info');
             } else if (this.state.reputation < 20 && randomEvent.type === 'positive' && Math.random() < 0.5) {
                 this.print(`Событие: \"${randomEvent.message}\" не принесло эффекта из-за низкой репутации.`, 'info');
-            } else {
                 this.print(`СОБЫТИЕ: ${randomEvent.message}`, randomEvent.type === 'positive' ? 'success' : 'error');
                 if (randomEvent.moneyChange) this.state.money += randomEvent.moneyChange;
                 if (randomEvent.reputationChange) this.state.reputation += randomEvent.reputationChange;
@@ -460,31 +478,33 @@ class Game {
         this.init(); // Переинициализируем игру
     }
 
-    cmdFire(args) {
-        if (args.length < 1) {
-            this.print('Использование: fire <ID_сотрудника> (например, \'fire 1\')');
-            if (this.state.employees.length > 0) {
-                this.print('Текущие сотрудники:');
-                this.state.employees.forEach(emp => this.print(`  - ID: ${emp.id}, ${emp.name} (${emp.type})`));
-            } else {
-                this.print('У вас нет сотрудников для увольнения.');
-            }
-            return;
-        }
-
-        const employeeIdToFire = parseInt(args[0]);
-        const employeeIndex = this.state.employees.findIndex(emp => emp.id === employeeIdToFire);
-
+    fireEmployeeById(employeeId) {
+        const employeeIndex = this.state.employees.findIndex(emp => emp.id === employeeId);
         if (employeeIndex === -1) {
-            this.print(`Сотрудник с ID ${employeeIdToFire} не найден.`);
-            return;
+            this.print(`Employee with ID ${employeeId} not found.`);
+            return false;
         }
-
         const firedEmployee = this.state.employees.splice(employeeIndex, 1)[0];
-        this.print(`Сотрудник ${firedEmployee.name} (${firedEmployee.type}) уволен.`, 'warning');
-        this.refreshAllPanels(); // Обновляем все панели после увольнения
+        this.print(`Employee ${firedEmployee.name} (${firedEmployee.type}) was fired.`, 'warning');
+        this.refreshAllPanels();
+        return true;
+    }
+
+    openFireModal(employee) {
+        this.employeeIdPendingFire = employee.id;
+        fireConfirmName.textContent = employee.name;
+        fireConfirmRole.textContent = employee.type;
+        fireConfirmModal.classList.add('visible');
+        fireConfirmModal.setAttribute('aria-hidden', 'false');
+    }
+
+    closeFireModal() {
+        this.employeeIdPendingFire = null;
+        fireConfirmModal.classList.remove('visible');
+        fireConfirmModal.setAttribute('aria-hidden', 'true');
     }
 }
+
 
 const game = new Game();
 
@@ -507,20 +527,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Удаляем логику для 'toggle-terminal', так как терминал всегда видим
             // if (command === 'toggle-terminal') { ... return; }
 
-            if (!game.state.gameOver || command === 'reset' || command.startsWith('fire')) {
-                if (command === 'fire') {
-                    firePanel.classList.remove('hidden');
-                    hirePanel.classList.add('hidden');
-                    projectsPanel.classList.add('hidden');
-                    game.renderFirePanel();
-                } else {
-                    firePanel.classList.add('hidden');
-                    hirePanel.classList.remove('hidden');
-                    projectsPanel.classList.remove('hidden');
-                }
+            if (!game.state.gameOver || command === 'reset') {
                 game.handleCommand(command);
             } else {
-                game.print('Игра окончена. Нажмите F5 для новой игры или наберите \'reset\' чтобы начать заново.');
+                game.print('Game is over. Use reset to start again.');
             }
             // Терминал всегда видим, поэтому всегда фокусируемся на вводе
             terminalInput.focus();
@@ -530,10 +540,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // Начальная настройка: терминал всегда видим, ввод включен
     terminalInput.disabled = false;
 
-    // Убеждаемся, что hirePanel и projectsPanel видны при старте, а firePanel скрыта
+    // Ensure hire and projects panels stay visible
     hirePanel.classList.remove('hidden');
     projectsPanel.classList.remove('hidden');
-    firePanel.classList.add('hidden');
 
     game.refreshAllPanels();
+});
+
+confirmFireBtn.addEventListener('click', () => {
+    if (game.employeeIdPendingFire !== null) {
+        game.fireEmployeeById(game.employeeIdPendingFire);
+    }
+    game.closeFireModal();
+});
+
+cancelFireBtn.addEventListener('click', () => game.closeFireModal());
+
+fireConfirmModal.addEventListener('click', (event) => {
+    if (event.target === fireConfirmModal) {
+        game.closeFireModal();
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        game.closeFireModal();
+    }
 });
