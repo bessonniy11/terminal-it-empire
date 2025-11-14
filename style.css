@@ -13,6 +13,48 @@ html {
 *, *::before, *::after {
     box-sizing: border-box;
 }
+#page-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000; /* Черный фон, как у терминала */
+    display: flex;
+    flex-direction: column; /* Элементы лоадера будут располагаться по вертикали */
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* Поверх всех остальных элементов */
+    transition: opacity 0.5s ease-out, visibility 0.5s ease-out; /* Анимация скрытия */
+}
+
+#page-loader.fade-out {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.loader-icon {
+    width: 100px; /* Размер иконки */
+    height: 100px;
+    margin-bottom: 20px; /* Отступ от текста */
+    object-fit: contain;
+    /* Можно добавить анимацию пульсации, если хочется */
+    animation: pulse 1.5s infinite alternate; /* Анимация пульсации */
+}
+
+.loader-text {
+    color: #0f0; /* Акцентный зеленый цвет */
+    font-size: 2.2em; /* Крупный текст */
+    font-weight: bold;
+    text-shadow: 0 0 15px rgba(0, 255, 0, 0.6); /* Небольшая неоновая тень */
+    animation: pulse 1.5s infinite alternate; /* Анимация пульсации */
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1.05); opacity: 0.8; }
+}
+
 body {
     margin: 0;
     font-family: 'Consolas', 'Courier New', monospace;

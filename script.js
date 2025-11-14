@@ -545,6 +545,14 @@ document.addEventListener('DOMContentLoaded', () => {
     projectsPanel.classList.remove('hidden');
 
     game.refreshAllPanels();
+
+    const pageLoader = document.getElementById('page-loader');
+    if (pageLoader) {
+        // Небольшая задержка, чтобы анимация лоадера была видна
+        setTimeout(() => {
+            pageLoader.classList.add('fade-out');
+        }, 500); // 0.5 секунды
+    }
 });
 
 confirmFireBtn.addEventListener('click', () => {
