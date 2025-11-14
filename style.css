@@ -1,4 +1,4 @@
-html {
+﻿html {
     height: 100%;
     overflow: hidden; /* РЈР±РёСЂР°РµРј РѕР±С‰РёР№ СЃРєСЂРѕР»Р» СЃ html */
 }
@@ -469,4 +469,78 @@ body {
     background-color: #008000;
 }
 
+
+@media (max-width: 768px) {
+    html,
+    body {
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;
+    }
+
+    body {
+        align-items: stretch;
+    }
+
+    #global-header,
+    .info-block-wrapper,
+    .game-layout-wrapper {
+        position: static;
+        width: 100%;
+        max-width: none;
+        height: auto;
+    }
+
+    #global-header {
+        padding: 10px;
+    }
+
+    .game-panel-wrapper {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    #game-controls {
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .control-btn {
+        flex: 1 1 calc(50% - 10px);
+        min-width: 140px;
+        font-size: 0.8em;
+        padding: 6px 10px;
+    }
+
+    .info-block-wrapper {
+        padding: var(--gap-between-sections) var(--page-padding);
+    }
+
+    .info-block {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .game-layout-wrapper {
+        padding: 0 var(--page-padding) var(--gap-between-sections);
+        margin-top: var(--gap-between-sections);
+    }
+
+    .game-layout {
+        grid-template-columns: 1fr;
+    }
+
+    #terminal-container,
+    #hire-fire-scroll-area,
+    #projects-scroll-area {
+        min-height: 280px;
+    }
+
+    .game-panel {
+        max-height: none;
+    }
+}
 
