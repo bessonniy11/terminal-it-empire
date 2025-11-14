@@ -44,10 +44,14 @@ html {
 
 .loader-text {
     color: #0f0; /* Акцентный зеленый цвет */
-    font-size: 2.2em; /* Крупный текст */
+    font-size: clamp(1.5em, 5vw, 2.2em); /* Адаптивный размер шрифта */
     font-weight: bold;
     text-shadow: 0 0 15px rgba(0, 255, 0, 0.6); /* Небольшая неоновая тень */
     animation: pulse 1.5s infinite alternate; /* Анимация пульсации */
+    text-align: center; /* Центрируем текст */
+    display: block; /* Делаем блочным элементом для правильного рендеринга ширины и переносов */
+    max-width: 80%; /* Ограничиваем максимальную ширину для принудительного переноса */
+    margin: 0 auto; /* Центрируем сам блочный элемент */
 }
 
 @keyframes pulse {

@@ -532,8 +532,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 game.print('Game is over. Use reset to start again.');
             }
-            // Терминал всегда видим, поэтому всегда фокусируемся на вводе
-            terminalInput.focus();
+            // Удаляем автоматический фокус на вводе после нажатия кнопки
+            // terminalInput.focus();
         });
     });
 
