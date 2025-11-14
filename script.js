@@ -1,4 +1,4 @@
-const terminalOutput = document.getElementById('terminal-output');
+﻿const terminalOutput = document.getElementById('terminal-output');
 const terminalInput = document.getElementById('terminal-input');
 const gameControls = document.getElementById('game-controls');
 
@@ -19,6 +19,59 @@ const fireConfirmRole = document.getElementById('fire-confirm-role');
 const confirmFireBtn = document.getElementById('confirm-fire-btn');
 const cancelFireBtn = document.getElementById('cancel-fire-btn');
 
+const SAVE_KEY = 'tib-save';
+const SCHEMA_VERSION = 1;
+
+function hasLocalStorage() {
+    try {
+        return typeof window !== 'undefined' && 'localStorage' in window && window.localStorage !== null;
+    } catch (error) {
+        console.warn('localStorage unavailable', error);
+        return false;
+    }
+}
+
+function cloneInitialState() {
+    const clone = JSON.parse(JSON.stringify(GAME_DATA.initialState));
+    clone.schemaVersion = SCHEMA_VERSION;
+    return clone;
+}
+
+function loadState() {
+    const fallback = cloneInitialState();
+    if (!hasLocalStorage()) {
+        return fallback;
+    }
+    try {
+        const raw = window.localStorage.getItem(SAVE_KEY);
+        if (!raw) {
+            return fallback;
+        }
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') {
+            return fallback;
+        }
+        if (parsed.schemaVersion !== SCHEMA_VERSION) {
+            return fallback;
+        }
+        return { ...fallback, ...parsed };
+    } catch (error) {
+        console.warn('Failed to load state, using defaults', error);
+        return fallback;
+    }
+}
+
+function saveState(state) {
+    if (!hasLocalStorage()) {
+        return;
+    }
+    try {
+        const payload = { ...state, schemaVersion: SCHEMA_VERSION };
+        window.localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+    } catch (error) {
+        console.warn('Failed to save state', error);
+    }
+}
 // Удаляем ссылки на терминал-шторку и кнопку переключения, т.к. терминал всегда видим
 // const terminalDrawerContainer = document.getElementById('terminal-drawer-container');
 // const toggleTerminalBtn = document.getElementById('toggle-terminal-btn');
@@ -26,7 +79,7 @@ const gameLayout = document.querySelector('.game-layout');
 
 class Game {
     constructor() {
-        this.state = JSON.parse(JSON.stringify(GAME_DATA.initialState));
+        this.state = loadState();
         this.commands = {};
         this.initCommands();
         this.employeeIdPendingFire = null;
@@ -132,9 +185,9 @@ class Game {
     renderHiredEmployees() {
         hiredEmployeesList.innerHTML = ''; // Очищаем список
         const employeeEmojis = {
-            'junior-dev': '🧑‍💻',
-            'mid-dev': '👨‍💻',
-            'senior-dev': '🧙‍♂️'
+            'junior-dev': '👨‍💻',
+            'mid-dev': '🧑‍💻',
+            'senior-dev': '🧑‍🏫'
         };
 
         if (this.state.employees.length === 0) {
@@ -146,7 +199,7 @@ class Game {
                 const removeBtn = document.createElement('button');
                 removeBtn.classList.add('fire-employee-trigger');
                 removeBtn.innerHTML = '&times;';
-                removeBtn.setAttribute('aria-label', `Remove ${emp.name}`);
+                removeBtn.setAttribute('aria-label', `Уволить ${emp.name}`);
                 removeBtn.addEventListener('click', (event) => {
                     event.stopPropagation();
                     this.openFireModal(emp);
@@ -275,6 +328,7 @@ class Game {
         this.renderActiveProjects();
         this.renderHirePanel();
         this.renderProjectsPanel();
+        this.persistState();
     }
 
     cmdHire(args) {
@@ -334,12 +388,12 @@ class Game {
         }
 
         if (this.state.projects.some(p => p.name.toLowerCase() === projectName.toLowerCase())) {
-            this.print(`Проект \'${projectName}\' уже активен.`);
+            this.print(`Проект '${projectName}' уже активен.`);
             return;
         }
 
         if (this.state.reputation < projectData.minReputation) {
-            this.print(`Недостаточно репутации для начала проекта \'${projectName}\'. Требуется ${projectData.minReputation}+ репутации.`);
+            this.print(`Недостаточно репутации для начала проекта '${projectName}'. Требуется ${projectData.minReputation}+ репутации.`);
             return;
         }
 
@@ -355,7 +409,7 @@ class Game {
         }
 
         if (!canDoProject) {
-            this.print(`Недостаточно навыков для начала проекта \'${projectName}\':`, 'error');
+            this.print(`Недостаточно навыков для начала проекта '${projectName}':`, 'error');
             missingSkills.forEach(skill => this.print(`  - ${skill}`));
             return;
         }
@@ -375,7 +429,7 @@ class Game {
         };
 
         this.state.projects.push(newProject);
-        this.print(`Проект \'${projectName}\' запущен!`, 'success');
+        this.print(`Проект '${projectName}' запущен!`, 'success');
         this.refreshAllPanels(); // Обновляем все панели после запуска проекта
     }
 
@@ -405,7 +459,7 @@ class Game {
                 } else {
                     proj.remainingDuration--;
                 }
-                this.print(`Прогресс по проекту \'${proj.name}\': ${proj.progress.toFixed(0)}%. Осталось недель: ${proj.remainingDuration}.`); //toFixed(0) для более чистого вывода
+                this.print(`Прогресс по проекту '${proj.name}': ${proj.progress.toFixed(0)}%. Осталось недель: ${proj.remainingDuration}.`); //toFixed(0) для более чистого вывода
             }
         });
 
@@ -414,7 +468,7 @@ class Game {
             if (proj.remainingDuration <= 0 && proj.progress >= 100) {
                 this.state.money += proj.reward;
                 this.state.reputation += proj.reputationGain;
-                this.print(`Проект \'${proj.name}\' успешно завершен! Получено $${proj.reward} и +${proj.reputationGain} репутации.`, 'success');
+                this.print(`Проект '${proj.name}' успешно завершен! Получено $${proj.reward} и +${proj.reputationGain} репутации.`, 'success');
                 return false; // Удаляем завершенный проект
             }
             return true;
@@ -428,9 +482,9 @@ class Game {
             const randomEvent = GAME_DATA.events[Math.floor(Math.random() * GAME_DATA.events.length)];
 
             if (this.state.reputation > 40 && randomEvent.type === 'negative' && Math.random() < 0.5) {
-                this.print(`Событие: \"${randomEvent.message}\" удалось предотвратить благодаря высокой репутации!`, 'info');
+                this.print(`Событие: "${randomEvent.message}" удалось предотвратить благодаря высокой репутации!`, 'info');
             } else if (this.state.reputation < 20 && randomEvent.type === 'positive' && Math.random() < 0.5) {
-                this.print(`Событие: \"${randomEvent.message}\" не принесло эффекта из-за низкой репутации.`, 'info');
+                this.print(`Событие: "${randomEvent.message}" не принесло эффекта из-за низкой репутации.`, 'info');
                 this.print(`СОБЫТИЕ: ${randomEvent.message}`, randomEvent.type === 'positive' ? 'success' : 'error');
                 if (randomEvent.moneyChange) this.state.money += randomEvent.moneyChange;
                 if (randomEvent.reputationChange) this.state.reputation += randomEvent.reputationChange;
@@ -471,21 +525,32 @@ class Game {
 
     cmdReset() {
         terminalOutput.innerHTML = ''; // Очищаем терминал
-        this.state = JSON.parse(JSON.stringify(GAME_DATA.initialState)); // Сбрасываем состояние
+        if (hasLocalStorage()) {
+            window.localStorage.removeItem(SAVE_KEY);
+        }
+        this.state = cloneInitialState(); // Сбрасываем состояние игры
         this.state.gameOver = false;
         terminalInput.disabled = false; // Включаем ввод
-        gameControls.classList.remove('disabled'); // Включаем кнопки при сбросе
-        this.init(); // Переинициализируем игру
+        gameControls.classList.remove('disabled'); // Включаем кнопки управления
+        this.init(); // Инициализируем игру заново
     }
+
+    persistState() {
+        if (!this.state) {
+            return;
+        }
+        saveState(this.state);
+    }
+
 
     fireEmployeeById(employeeId) {
         const employeeIndex = this.state.employees.findIndex(emp => emp.id === employeeId);
         if (employeeIndex === -1) {
-            this.print(`Employee with ID ${employeeId} not found.`);
+            this.print(`Сотрудник с ID ${employeeId} не найден.`);
             return false;
         }
         const firedEmployee = this.state.employees.splice(employeeIndex, 1)[0];
-        this.print(`Employee ${firedEmployee.name} (${firedEmployee.type}) was fired.`, 'warning');
+        this.print(`Сотрудник ${firedEmployee.name} (${firedEmployee.type}) был уволен.`, 'warning');
         this.refreshAllPanels();
         return true;
     }
@@ -530,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!game.state.gameOver || command === 'reset') {
                 game.handleCommand(command);
             } else {
-                game.print('Game is over. Use reset to start again.');
+                game.print('Игра окончена. Используйте reset для начала заново.');
             }
             // Удаляем автоматический фокус на вводе после нажатия кнопки
             // terminalInput.focus();
@@ -575,3 +640,4 @@ document.addEventListener('keydown', (event) => {
         game.closeFireModal();
     }
 });
+

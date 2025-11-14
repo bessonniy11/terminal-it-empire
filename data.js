@@ -1,5 +1,6 @@
-const GAME_DATA = {
+﻿const GAME_DATA = {
     initialState: {
+        schemaVersion: 1,
         money: 20000, // Увеличенный стартовый капитал
         reputation: 15, // Немного увеличенная стартовая репутация
         employees: [],
@@ -36,7 +37,7 @@ const GAME_DATA = {
     projectTypes: [
         {
             name: 'Simple Landing Page',
-            icon: '🌐',
+            icon: '🌍',
             description: 'Быстрый одностраничный сайт для малого бизнеса.',
             requiredSkills: { coding: 3, bugfixing: 1 },
             duration: 3, // in weeks
@@ -88,3 +89,4 @@ const GAME_DATA = {
         { type: 'negative', message: 'Внезапная проверка налоговой службы! Штраф за неточности в отчетности. (-$2000)', moneyChange: -2000}
     ]
 };
+
