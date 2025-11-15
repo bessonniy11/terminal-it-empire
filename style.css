@@ -841,6 +841,22 @@ body {
     margin-top: 8px;
 }
 
+.employee-mood {
+    margin-top: 8px;
+    font-size: 0.95em;
+    color: #e3ffe0;
+}
+
+.employee-warning-line {
+    margin-top: 4px;
+    font-size: 0.85em;
+    color: #ffd98e;
+}
+
+.employee-warning-line.warning-active {
+    color: #ff9a9a;
+}
+
 .salary-editor {
     margin-top: 10px;
 }
