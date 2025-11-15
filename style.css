@@ -1,10 +1,10 @@
-html {
+﻿html {
     height: 100%;
-    overflow: hidden; /* Убираем общий скролл с html */
+    overflow: hidden; /* РЈР±РёСЂР°РµРј РѕР±С‰РёР№ СЃРєСЂРѕР»Р» СЃ html */
 }
 :root {
-    --header-height: 60px; /* Примерная высота хедера */
-    --info-block-height: 220px; /* Увеличена высота info-block */
+    --header-height: 60px; /* РџСЂРёРјРµСЂРЅР°СЏ РІС‹СЃРѕС‚Р° С…РµРґРµСЂР° */
+    --info-block-height: 220px; /* РЈРІРµР»РёС‡РµРЅР° РІС‹СЃРѕС‚Р° info-block */
     --game-layout-max-width: 1400px;
     --gap-between-sections: 20px;
     --terminal-width: 400px;
@@ -19,13 +19,13 @@ html {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: #000; /* Черный фон, как у терминала */
+    background-color: #000; /* Р§РµСЂРЅС‹Р№ С„РѕРЅ, РєР°Рє Сѓ С‚РµСЂРјРёРЅР°Р»Р° */
     display: flex;
-    flex-direction: column; /* Элементы лоадера будут располагаться по вертикали */
+    flex-direction: column; /* Р­Р»РµРјРµРЅС‚С‹ Р»РѕР°РґРµСЂР° Р±СѓРґСѓС‚ СЂР°СЃРїРѕР»Р°РіР°С‚СЊСЃСЏ РїРѕ РІРµСЂС‚РёРєР°Р»Рё */
     justify-content: center;
     align-items: center;
-    z-index: 9999; /* Поверх всех остальных элементов */
-    transition: opacity 0.5s ease-out, visibility 0.5s ease-out; /* Анимация скрытия */
+    z-index: 9999; /* РџРѕРІРµСЂС… РІСЃРµС… РѕСЃС‚Р°Р»СЊРЅС‹С… СЌР»РµРјРµРЅС‚РѕРІ */
+    transition: opacity 0.5s ease-out, visibility 0.5s ease-out; /* РђРЅРёРјР°С†РёСЏ СЃРєСЂС‹С‚РёСЏ */
 }
 
 #page-loader.fade-out {
@@ -34,24 +34,24 @@ html {
 }
 
 .loader-icon {
-    width: 100px; /* Размер иконки */
+    width: 100px; /* Р Р°Р·РјРµСЂ РёРєРѕРЅРєРё */
     height: 100px;
-    margin-bottom: 20px; /* Отступ от текста */
+    margin-bottom: 20px; /* РћС‚СЃС‚СѓРї РѕС‚ С‚РµРєСЃС‚Р° */
     object-fit: contain;
-    /* Можно добавить анимацию пульсации, если хочется */
-    animation: pulse 1.5s infinite alternate; /* Анимация пульсации */
+    /* РњРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ Р°РЅРёРјР°С†РёСЋ РїСѓР»СЊСЃР°С†РёРё, РµСЃР»Рё С…РѕС‡РµС‚СЃСЏ */
+    animation: pulse 1.5s infinite alternate; /* РђРЅРёРјР°С†РёСЏ РїСѓР»СЊСЃР°С†РёРё */
 }
 
 .loader-text {
-    color: #0f0; /* Акцентный зеленый цвет */
-    font-size: clamp(1.5em, 5vw, 2.2em); /* Адаптивный размер шрифта */
+    color: #0f0; /* РђРєС†РµРЅС‚РЅС‹Р№ Р·РµР»РµРЅС‹Р№ С†РІРµС‚ */
+    font-size: clamp(1.5em, 5vw, 2.2em); /* РђРґР°РїС‚РёРІРЅС‹Р№ СЂР°Р·РјРµСЂ С€СЂРёС„С‚Р° */
     font-weight: bold;
-    text-shadow: 0 0 15px rgba(0, 255, 0, 0.6); /* Небольшая неоновая тень */
-    animation: pulse 1.5s infinite alternate; /* Анимация пульсации */
-    text-align: center; /* Центрируем текст */
-    display: block; /* Делаем блочным элементом для правильного рендеринга ширины и переносов */
-    max-width: 80%; /* Ограничиваем максимальную ширину для принудительного переноса */
-    margin: 0 auto; /* Центрируем сам блочный элемент */
+    text-shadow: 0 0 15px rgba(0, 255, 0, 0.6); /* РќРµР±РѕР»СЊС€Р°СЏ РЅРµРѕРЅРѕРІР°СЏ С‚РµРЅСЊ */
+    animation: pulse 1.5s infinite alternate; /* РђРЅРёРјР°С†РёСЏ РїСѓР»СЊСЃР°С†РёРё */
+    text-align: center; /* Р¦РµРЅС‚СЂРёСЂСѓРµРј С‚РµРєСЃС‚ */
+    display: block; /* Р”РµР»Р°РµРј Р±Р»РѕС‡РЅС‹Рј СЌР»РµРјРµРЅС‚РѕРј РґР»СЏ РїСЂР°РІРёР»СЊРЅРѕРіРѕ СЂРµРЅРґРµСЂРёРЅРіР° С€РёСЂРёРЅС‹ Рё РїРµСЂРµРЅРѕСЃРѕРІ */
+    max-width: 80%; /* РћРіСЂР°РЅРёС‡РёРІР°РµРј РјР°РєСЃРёРјР°Р»СЊРЅСѓСЋ С€РёСЂРёРЅСѓ РґР»СЏ РїСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕРіРѕ РїРµСЂРµРЅРѕСЃР° */
+    margin: 0 auto; /* Р¦РµРЅС‚СЂРёСЂСѓРµРј СЃР°Рј Р±Р»РѕС‡РЅС‹Р№ СЌР»РµРјРµРЅС‚ */
 }
 
 @keyframes pulse {
@@ -82,10 +82,10 @@ body {
     box-sizing: border-box;
     height: var(--header-height);
     display: flex;
-    justify-content: center; /* Возвращаем центрирование для game-panel-wrapper */
+    justify-content: center; /* Р’РѕР·РІСЂР°С‰Р°РµРј С†РµРЅС‚СЂРёСЂРѕРІР°РЅРёРµ РґР»СЏ game-panel-wrapper */
     align-items: center;
 }
-/* Удаляем эти стили, так как h1 теперь внутри .game-panel-wrapper */
+/* РЈРґР°Р»СЏРµРј СЌС‚Рё СЃС‚РёР»Рё, С‚Р°Рє РєР°Рє h1 С‚РµРїРµСЂСЊ РІРЅСѓС‚СЂРё .game-panel-wrapper */
 /* #global-header h1 { */
 /*     color: #0f0; */
 /*     margin: 0; */
@@ -93,7 +93,7 @@ body {
 /*     font-weight: bold; */
 /*     flex-shrink: 0; */
 /* } */
-/* Перемещаем стили h1 из global-header внутрь .game-panel-wrapper */
+/* РџРµСЂРµРјРµС‰Р°РµРј СЃС‚РёР»Рё h1 РёР· global-header РІРЅСѓС‚СЂСЊ .game-panel-wrapper */
 .game-panel-wrapper h1 {
     color: #0f0;
     margin: 0;
@@ -103,21 +103,21 @@ body {
 }
 
 .header-icon {
-    height: 40px; /* Размер иконки */
-    width: 40px;  /* Устанавливаем равную ширину для круглой формы */
-    object-fit: contain; /* Чтобы изображение не обрезалось, если оно не квадратное */
-    margin-right: 10px; /* Отступ справа от иконки */
-    flex-shrink: 0; /* Запрещаем сжиматься */
-    border: 1px solid #0f0; /* Акцентная обводка */
-    border-radius: 50%; /* Делаем иконку круглой */
-    padding: 2px; /* Небольшой отступ внутри обводки */
-    box-shadow: 0 0 8px rgba(0, 255, 0, 0.4); /* Небольшая тень для акцента */
+    height: 40px; /* Р Р°Р·РјРµСЂ РёРєРѕРЅРєРё */
+    width: 40px;  /* РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј СЂР°РІРЅСѓСЋ С€РёСЂРёРЅСѓ РґР»СЏ РєСЂСѓРіР»РѕР№ С„РѕСЂРјС‹ */
+    object-fit: contain; /* Р§С‚РѕР±С‹ РёР·РѕР±СЂР°Р¶РµРЅРёРµ РЅРµ РѕР±СЂРµР·Р°Р»РѕСЃСЊ, РµСЃР»Рё РѕРЅРѕ РЅРµ РєРІР°РґСЂР°С‚РЅРѕРµ */
+    margin-right: 10px; /* РћС‚СЃС‚СѓРї СЃРїСЂР°РІР° РѕС‚ РёРєРѕРЅРєРё */
+    flex-shrink: 0; /* Р—Р°РїСЂРµС‰Р°РµРј СЃР¶РёРјР°С‚СЊСЃСЏ */
+    border: 1px solid #0f0; /* РђРєС†РµРЅС‚РЅР°СЏ РѕР±РІРѕРґРєР° */
+    border-radius: 50%; /* Р”РµР»Р°РµРј РёРєРѕРЅРєСѓ РєСЂСѓРіР»РѕР№ */
+    padding: 2px; /* РќРµР±РѕР»СЊС€РѕР№ РѕС‚СЃС‚СѓРї РІРЅСѓС‚СЂРё РѕР±РІРѕРґРєРё */
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.4); /* РќРµР±РѕР»СЊС€Р°СЏ С‚РµРЅСЊ РґР»СЏ Р°РєС†РµРЅС‚Р° */
 }
 
 .header-title-group {
     display: flex;
     align-items: center;
-    gap: 10px; /* Отступ между иконкой и текстом */
+    gap: 10px; /* РћС‚СЃС‚СѓРї РјРµР¶РґСѓ РёРєРѕРЅРєРѕР№ Рё С‚РµРєСЃС‚РѕРј */
     flex-shrink: 0;
 }
 
@@ -125,18 +125,22 @@ body {
     width: 100%;
     max-width: var(--game-layout-max-width);
     display: flex;
-    justify-content: space-between; /* Иконка+заголовок слева, кнопки справа */
+    justify-content: space-between; /* РРєРѕРЅРєР°+Р·Р°РіРѕР»РѕРІРѕРє СЃР»РµРІР°, РєРЅРѕРїРєРё СЃРїСЂР°РІР° */
     align-items: center;
     gap: 10px;
     height: 100%;
-    margin: 0 auto; /* Центрируем wrapper */
+    margin: 0 auto; /* Р¦РµРЅС‚СЂРёСЂСѓРµРј wrapper */
 }
 #global-header .game-panel {
-    background-color: transparent; /* Убираем фон панели, так как он уже у хедера */
-    border: none; /* Убираем рамку */
-    box-shadow: none; /* Убираем тень */
-    padding: 0; /* Убираем паддинг */
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
+
 .info-block-wrapper {
     position: fixed;
     top: calc(var(--header-height) + var(--gap-between-sections));
@@ -156,9 +160,9 @@ body {
     grid-template-columns: 1fr 1fr 1fr;
     gap: var(--gap-between-sections);
     width: 100%;
-    max-width: var(--game-layout-max-width); /* Ограничиваем общую ширину */
-    height: 100%; /* Занимает всю высоту своего враппера */
-    align-items: stretch; /* Убеждаемся, что элементы грида растягиваются по высоте */
+    max-width: var(--game-layout-max-width); /* РћРіСЂР°РЅРёС‡РёРІР°РµРј РѕР±С‰СѓСЋ С€РёСЂРёРЅСѓ */
+    height: 100%; /* Р—Р°РЅРёРјР°РµС‚ РІСЃСЋ РІС‹СЃРѕС‚Сѓ СЃРІРѕРµРіРѕ РІСЂР°РїРїРµСЂР° */
+    align-items: stretch; /* РЈР±РµР¶РґР°РµРјСЃСЏ, С‡С‚Рѕ СЌР»РµРјРµРЅС‚С‹ РіСЂРёРґР° СЂР°СЃС‚СЏРіРёРІР°СЋС‚СЃСЏ РїРѕ РІС‹СЃРѕС‚Рµ */
 }
 .info-block .game-panel {
     height: 100%;
@@ -177,11 +181,11 @@ body {
     box-sizing: border-box;
 }
 .game-layout {
-    display: grid; /* Возвращаем grid для трехколоночного макета */
+    display: grid; /* Р’РѕР·РІСЂР°С‰Р°РµРј grid РґР»СЏ С‚СЂРµС…РєРѕР»РѕРЅРѕС‡РЅРѕРіРѕ РјР°РєРµС‚Р° */
     grid-template-columns: 1fr 1fr 1fr;
     gap: var(--gap-between-sections);
     width: 100%;
-    max-width: var(--game-layout-max-width); /* Ограничиваем общую ширину */
+    max-width: var(--game-layout-max-width); /* РћРіСЂР°РЅРёС‡РёРІР°РµРј РѕР±С‰СѓСЋ С€РёСЂРёРЅСѓ */
     height: 100%;
     box-sizing: border-box;
 }
@@ -197,9 +201,9 @@ body {
     overflow: hidden;
 }
 #main-content-area {
-    /* Этот блок больше не нужен как отдельный flex-контейнер для правых панелей */
-    /* Его содержимое теперь будет прямыми дочерними элементами .game-layout */
-    display: none; /* Скрываем его */
+    /* Р­С‚РѕС‚ Р±Р»РѕРє Р±РѕР»СЊС€Рµ РЅРµ РЅСѓР¶РµРЅ РєР°Рє РѕС‚РґРµР»СЊРЅС‹Р№ flex-РєРѕРЅС‚РµР№РЅРµСЂ РґР»СЏ РїСЂР°РІС‹С… РїР°РЅРµР»РµР№ */
+    /* Р•РіРѕ СЃРѕРґРµСЂР¶РёРјРѕРµ С‚РµРїРµСЂСЊ Р±СѓРґРµС‚ РїСЂСЏРјС‹РјРё РґРѕС‡РµСЂРЅРёРјРё СЌР»РµРјРµРЅС‚Р°РјРё .game-layout */
+    display: none; /* РЎРєСЂС‹РІР°РµРј РµРіРѕ */
 }
 #hire-fire-scroll-area {
     height: 100%;
@@ -221,39 +225,39 @@ body {
     min-height: 0;
     overflow: hidden;
 }
-/* Переопределяем стили для панелей внутри info-block, чтобы убрать лишние рамки */
-/* Это правило теперь не нужно, так как рамки добавляются к .info-block .game-panel */
+/* РџРµСЂРµРѕРїСЂРµРґРµР»СЏРµРј СЃС‚РёР»Рё РґР»СЏ РїР°РЅРµР»РµР№ РІРЅСѓС‚СЂРё info-block, С‡С‚РѕР±С‹ СѓР±СЂР°С‚СЊ Р»РёС€РЅРёРµ СЂР°РјРєРё */
+/* Р­С‚Рѕ РїСЂР°РІРёР»Рѕ С‚РµРїРµСЂСЊ РЅРµ РЅСѓР¶РЅРѕ, С‚Р°Рє РєР°Рє СЂР°РјРєРё РґРѕР±Р°РІР»СЏСЋС‚СЃСЏ Рє .info-block .game-panel */
 /* .info-block .game-panel { */
 /*     border: none; */
 /*     box-shadow: none; */
 /* } */
-/* Панели, которые должны быть всегда видны и не сжиматься */
+/* РџР°РЅРµР»Рё, РєРѕС‚РѕСЂС‹Рµ РґРѕР»Р¶РЅС‹ Р±С‹С‚СЊ РІСЃРµРіРґР° РІРёРґРЅС‹ Рё РЅРµ СЃР¶РёРјР°С‚СЊСЃСЏ */
 /* #game-stats, */
 /* #active-projects-panel, */
 /* #hired-employees-panel { */
 /*     flex-shrink: 0; */
 /* } */
 /* #game-stats { */
-/*     // Для game-stats не нужно min-height, т.к. ее высота будет определяться гридом */
+/*     // Р”Р»СЏ game-stats РЅРµ РЅСѓР¶РЅРѕ min-height, С‚.Рє. РµРµ РІС‹СЃРѕС‚Р° Р±СѓРґРµС‚ РѕРїСЂРµРґРµР»СЏС‚СЊСЃСЏ РіСЂРёРґРѕРј */
 /*     // min-height: fit-content; */
 /* } */
 /* #active-projects-panel, */
 /* #hired-employees-panel { */
-/*     // max-height: 120px; */ /* Удаляем, чтобы высота определялась гридом */
-/*     // overflow-y: auto; */ /* Удаляем, скролл будет внутри списков */
+/*     // max-height: 120px; */ /* РЈРґР°Р»СЏРµРј, С‡С‚РѕР±С‹ РІС‹СЃРѕС‚Р° РѕРїСЂРµРґРµР»СЏР»Р°СЃСЊ РіСЂРёРґРѕРј */
+/*     // overflow-y: auto; */ /* РЈРґР°Р»СЏРµРј, СЃРєСЂРѕР»Р» Р±СѓРґРµС‚ РІРЅСѓС‚СЂРё СЃРїРёСЃРєРѕРІ */
 /* } */
-/* Новые прокручиваемые секции */
+/* РќРѕРІС‹Рµ РїСЂРѕРєСЂСѓС‡РёРІР°РµРјС‹Рµ СЃРµРєС†РёРё */
 .scrollable-section {
-    flex-grow: 1; /* Занимает оставшееся пространство */
-    flex-basis: 0; /* Позволяет равномерно распределять оставшееся пространство */
+    flex-grow: 1; /* Р—Р°РЅРёРјР°РµС‚ РѕСЃС‚Р°РІС€РµРµСЃСЏ РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІРѕ */
+    flex-basis: 0; /* РџРѕР·РІРѕР»СЏРµС‚ СЂР°РІРЅРѕРјРµСЂРЅРѕ СЂР°СЃРїСЂРµРґРµР»СЏС‚СЊ РѕСЃС‚Р°РІС€РµРµСЃСЏ РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІРѕ */
     overflow-y: auto;
-    min-height: 0; /* Важно: позволяет элементу flex сжиматься ниже его размера содержимого */
-    padding-right: 5px; /* Для скроллбара */
+    min-height: 0; /* Р’Р°Р¶РЅРѕ: РїРѕР·РІРѕР»СЏРµС‚ СЌР»РµРјРµРЅС‚Сѓ flex СЃР¶РёРјР°С‚СЊСЃСЏ РЅРёР¶Рµ РµРіРѕ СЂР°Р·РјРµСЂР° СЃРѕРґРµСЂР¶РёРјРѕРіРѕ */
+    padding-right: 5px; /* Р”Р»СЏ СЃРєСЂРѕР»Р»Р±Р°СЂР° */
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
-/* Общие стили для game-panel */
+/* РћР±С‰РёРµ СЃС‚РёР»Рё РґР»СЏ game-panel */
 .game-panel {
     background-color: #000;
     border: 1px solid #333;
@@ -271,9 +275,9 @@ body {
     margin-bottom: 15px;
     font-size: 1.2em;
     text-align: center;
-    flex-shrink: 0; /* Запрещаем заголовку сжиматься */
+    flex-shrink: 0; /* Р—Р°РїСЂРµС‰Р°РµРј Р·Р°РіРѕР»РѕРІРєСѓ СЃР¶РёРјР°С‚СЊСЃСЏ */
 }
-/* .terminal-output теперь внутри терминал-контейнера */
+/* .terminal-output С‚РµРїРµСЂСЊ РІРЅСѓС‚СЂРё С‚РµСЂРјРёРЅР°Р»-РєРѕРЅС‚РµР№РЅРµСЂР° */
 .terminal-output {
     flex-grow: 1;
     min-height: 0;
@@ -289,7 +293,7 @@ body {
     padding: 10px 15px;
     border-top: 1px solid #333;
     background-color: #1a1a1a;
-    flex-shrink: 0; /* Запрещаем сжиматься */
+    flex-shrink: 0; /* Р—Р°РїСЂРµС‰Р°РµРј СЃР¶РёРјР°С‚СЊСЃСЏ */
 }
 .prompt {
     color: #0f0;
@@ -306,9 +310,9 @@ body {
     font-size: 0.9em;
 }
 .terminal-input::selection {
-    background-color: #008000; /* Цвет выделения */
+    background-color: #008000; /* Р¦РІРµС‚ РІС‹РґРµР»РµРЅРёСЏ */
 }
-/* Стили для нового класса прокручиваемого содержимого панелей */
+/* РЎС‚РёР»Рё РґР»СЏ РЅРѕРІРѕРіРѕ РєР»Р°СЃСЃР° РїСЂРѕРєСЂСѓС‡РёРІР°РµРјРѕРіРѕ СЃРѕРґРµСЂР¶РёРјРѕРіРѕ РїР°РЅРµР»РµР№ */
 .panel-content-scroll {
     flex-grow: 1;
     min-height: 0;
@@ -318,7 +322,7 @@ body {
     flex-direction: column;
     gap: 10px;
 }
-/* Стили для новых блоков */
+/* РЎС‚РёР»Рё РґР»СЏ РЅРѕРІС‹С… Р±Р»РѕРєРѕРІ */
 #game-stats p {
     margin: 5px 0;
     font-size: 1em;
@@ -345,6 +349,7 @@ body {
     border-radius: 5px;
     padding: 12px;
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
 }
 
@@ -437,6 +442,11 @@ body {
     cursor: not-allowed;
 }
 
+.employee-stats-btn.small {
+    padding: 4px 10px;
+    font-size: 0.75em;
+}
+
 .project-name {
     font-weight: 600;
     color: #fff;
@@ -474,7 +484,7 @@ body {
 .employee-card.disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    pointer-events: none; /* Отключаем события мыши */
+    pointer-events: none; /* РћС‚РєР»СЋС‡Р°РµРј СЃРѕР±С‹С‚РёСЏ РјС‹С€Рё */
 }
 .employee-card h3 {
     color: #0f0;
@@ -507,7 +517,7 @@ body {
     font-weight: bold;
     color: #0c0;
 }
-/* Стили для карточек проектов */
+/* РЎС‚РёР»Рё РґР»СЏ РєР°СЂС‚РѕС‡РµРє РїСЂРѕРµРєС‚РѕРІ */
 .projects-grid {
     display: flex;
     flex-direction: column;
@@ -552,15 +562,15 @@ body {
     margin: 0;
     font-size: 0.8em;
     color: #bbb;
-    overflow: hidden; /* Скрываем излишки */
-    word-wrap: break-word; /* Переносим длинные слова */
+    overflow: hidden; /* РЎРєСЂС‹РІР°РµРј РёР·Р»РёС€РєРё */
+    word-wrap: break-word; /* РџРµСЂРµРЅРѕСЃРёРј РґР»РёРЅРЅС‹Рµ СЃР»РѕРІР° */
 }
 .project-card .skills-req {
     font-weight: bold;
     color: #0c0;
     margin-top: 5px;
 }
-/* Размеры проектов */
+/* Р Р°Р·РјРµСЂС‹ РїСЂРѕРµРєС‚РѕРІ */
 /* .project-card.small-project {
     min-height: 120px;
 }
@@ -570,40 +580,40 @@ body {
 .project-card.large-project {
     min-height: 180px;
 } */
-/* Дополнительные стили для output сообщений */
+/* Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ СЃС‚РёР»Рё РґР»СЏ output СЃРѕРѕР±С‰РµРЅРёР№ */
 .success {
-    color: #28a745; /* Зеленый */
+    color: #28a745; /* Р—РµР»РµРЅС‹Р№ */
 }
 .error {
-    color: #dc3545; /* Красный */
+    color: #dc3545; /* РљСЂР°СЃРЅС‹Р№ */
 }
 .warning {
-    color: #ffc107; /* Желтый */
+    color: #ffc107; /* Р–РµР»С‚С‹Р№ */
 }
 .hidden {
     display: none !important;
 }
-/* Кастомизация скроллбара */
+/* РљР°СЃС‚РѕРјРёР·Р°С†РёСЏ СЃРєСЂРѕР»Р»Р±Р°СЂР° */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
 ::-webkit-scrollbar-track {
-    background: #282c34; /* Цвет фона трека */
+    background: #282c34; /* Р¦РІРµС‚ С„РѕРЅР° С‚СЂРµРєР° */
     border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb {
-    background: #0f0; /* Цвет ползунка */
+    background: #0f0; /* Р¦РІРµС‚ РїРѕР»Р·СѓРЅРєР° */
     border-radius: 10px;
-    border: 2px solid #282c34; /* Отступ от края трека */
+    border: 2px solid #282c34; /* РћС‚СЃС‚СѓРї РѕС‚ РєСЂР°СЏ С‚СЂРµРєР° */
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #0c0; /* Цвет ползунка при наведении */
+    background: #0c0; /* Р¦РІРµС‚ РїРѕР»Р·СѓРЅРєР° РїСЂРё РЅР°РІРµРґРµРЅРёРё */
 }
-/* Стили для кнопок управления */
+/* РЎС‚РёР»Рё РґР»СЏ РєРЅРѕРїРѕРє СѓРїСЂР°РІР»РµРЅРёСЏ */
 #game-controls {
     display: flex;
-    flex-direction: row; /* Кнопки в ряд */
+    flex-direction: row; /* РљРЅРѕРїРєРё РІ СЂСЏРґ */
     gap: 10px;
     padding: 0;
     border: none;
@@ -631,7 +641,19 @@ body {
     background-color: #0a0;
     transform: translateY(0);
 }
-.next-week-btn {
+
+.control-btn.stats-modal-btn {
+    background-color: #043d1c;
+    border-color: #1b8c4c;
+    color: #9fffbf;
+}
+
+.control-btn.stats-modal-btn:hover {
+    background-color: #095a2a;
+    color: #eaffe6;
+}
+
+.control-btn.next-week-btn {
     background-color: #1bd743;
     border-color: #0d912f;
     color: #031b08;
@@ -642,18 +664,19 @@ body {
     padding: 10px 18px;
     box-shadow: 0 0 12px rgba(27, 215, 67, 0.5);
 }
-.next-week-btn:hover {
+
+.control-btn.next-week-btn:hover {
     background-color: #17c23c;
     border-color: #0c7f2a;
     box-shadow: 0 0 16px rgba(27, 215, 67, 0.7);
+    transform: translateY(-2px);
 }
-.next-week-btn:active {
+
+.control-btn.next-week-btn:active {
     background-color: #129633;
     border-color: #0b5f21;
     transform: translateY(1px);
 }
-
-
 @media (max-width: 768px) {
     html,
     body {
@@ -744,6 +767,14 @@ body {
 
 .modal-overlay.visible {
     display: flex;
+}
+
+#employee-stats-modal {
+    z-index: 5000;
+}
+
+#global-stats-modal {
+    z-index: 4500;
 }
 
 .modal-content {
@@ -857,6 +888,145 @@ body {
     color: #ff9a9a;
 }
 
+.global-modal {
+    max-width: 680px;
+    position: relative;
+}
+
+.global-stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.global-stats-item {
+    border: 1px solid #2a2a2a;
+    padding: 12px;
+    border-radius: 6px;
+    background-color: #111;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.global-stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    color: #fff;
+}
+
+.mood-chip {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    text-transform: uppercase;
+}
+
+.mood-good {
+    background-color: rgba(0, 255, 0, 0.1);
+    color: #8fffa0;
+}
+
+.mood-neutral {
+    background-color: rgba(255, 255, 0, 0.1);
+    color: #ffe066;
+}
+
+.mood-bad {
+    background-color: rgba(255, 120, 120, 0.12);
+    color: #ff9a9a;
+}
+
+.global-stats-footer {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 0.85em;
+    color: #c3c3c3;
+}
+
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.status-warning {
+    border-color: #ff9a9a;
+    color: #ff9a9a;
+}
+
+.status-pending {
+    border-color: #ffd98e;
+    color: #ffd98e;
+}
+
+#notifications-container {
+    position: fixed;
+    top: 90px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 4000;
+    max-width: 320px;
+}
+
+.notification-card {
+    background-color: #121212;
+    border: 1px solid #2c2c2c;
+    border-left: 4px solid #0f0;
+    padding: 12px 14px;
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    animation: slide-in 0.3s ease-out;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.notification-card h4 {
+    margin: 0 0 6px;
+    font-size: 0.95em;
+    color: #fff;
+}
+
+.notification-card p {
+    margin: 0;
+    color: #d3d3d3;
+    font-size: 0.85em;
+}
+
+.notification-card.success {
+    border-left-color: #3ddc84;
+}
+
+.notification-card.warning {
+    border-left-color: #ffc107;
+}
+
+.notification-card.error {
+    border-left-color: #ff6b6b;
+}
+
+.notification-card.hide {
+    opacity: 0;
+    transform: translateX(20px);
+}
+
+@keyframes slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
 .salary-editor {
     margin-top: 10px;
 }
@@ -942,3 +1112,12 @@ body {
     border-color: #4aa0ff;
     color: #add6ff;
 }
+.stats-modal-btn {
+    border-color: #66ff66;
+    color: #66ff66;
+}
+
+.stats-modal-btn:hover {
+    background-color: rgba(102, 255, 102, 0.1);
+}
+

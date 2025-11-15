@@ -15,18 +15,22 @@ const fireConfirmName = document.getElementById('fire-confirm-name');
 const fireConfirmRole = document.getElementById('fire-confirm-role');
 const confirmFireBtn = document.getElementById('confirm-fire-btn');
 const cancelFireBtn = document.getElementById('cancel-fire-btn');
-
 const employeeStatsModal = document.getElementById('employee-stats-modal');
 const employeeModalName = document.getElementById('employee-modal-name');
 const employeeModalRole = document.getElementById('employee-modal-role');
 const employeeModalCurrentSalary = document.getElementById('employee-modal-current-salary');
 const employeeModalMarketSalary = document.getElementById('employee-modal-market-salary');
+const employeeModalMood = document.getElementById('employee-modal-mood');
+const employeeModalWarning = document.getElementById('employee-modal-warning');
 const employeeEventsList = document.getElementById('employee-events-list');
 const employeeSalaryInput = document.getElementById('employee-salary-input');
 const saveEmployeeSalaryBtn = document.getElementById('save-employee-salary');
 const closeEmployeeModalBtn = document.getElementById('close-employee-modal');
-const employeeModalMood = document.getElementById('employee-modal-mood');
-const employeeModalWarning = document.getElementById('employee-modal-warning');
+const openGlobalStatsBtn = document.getElementById('open-global-stats');
+const globalStatsModal = document.getElementById('global-stats-modal');
+const globalStatsList = document.getElementById('global-stats-list');
+const closeGlobalStatsBtn = document.getElementById('close-global-stats');
+const notificationsContainer = document.getElementById('notifications-container');
 
 const SAVE_KEY = 'tib-save';
 const SCHEMA_VERSION = 1;
@@ -90,14 +94,18 @@ const WARNING_SOURCES = [
 ];
 
 const SATISFACTION_DESCRIPTIONS = [
-    { min: 70, text: 'сияет ярче монитора в тёмной комнате' },
+    { min: 80, text: 'поёт гимн компании и раздаёт стикеры' },
+    { min: 60, text: 'сияет ярче монитора в тёмной комнате' },
     { min: 40, text: 'доволен и подпевает во время стендапов' },
-    { min: 10, text: 'держится, но кофе льётся литрами' },
-    { min: -10, text: 'поглядывает на вакансии между коммитами' },
-    { min: -40, text: 'ищет Exit в каждом спринт-борде' },
-    { min: -70, text: 'напечатал заявление и ищет принтер' },
-    { min: -101, text: 'строит побег, пакует тикеты с собой' }
+    { min: 20, text: 'шутит, но тихо ищет курсы роста' },
+    { min: 5, text: 'держится, но кофе льётся литрами' },
+    { min: -5, text: 'поглядывает на вакансии между коммитами' },
+    { min: -20, text: 'ищет EXIT в каждом спринт-борде' },
+    { min: -40, text: 'напечатал заявление и ищет принтер' },
+    { min: -70, text: 'строит побег, пакует тикеты с собой' },
+    { min: -101, text: 'написал "пока" в README' }
 ];
+
 
 const DEPARTURE_REASONS = {
     salary: [
@@ -293,7 +301,7 @@ class Game {
         this.state.employees.forEach(employee => {
             employee.baseSalary = typeof employee.baseSalary === 'number' ? employee.baseSalary : employee.salary || 0;
             employee.currentSalary = typeof employee.currentSalary === 'number' ? employee.currentSalary : employee.baseSalary;
-            employee.marketSalary = typeof employee.marketSalary === 'number' ? employee.marketSalary : employee.currentSalary;
+            employee.marketSalary = typeof employee.marketSalary === 'number' ? employee.marketSalary : employee.baseSalary;
             employee.eventLog = Array.isArray(employee.eventLog)
                 ? employee.eventLog
                 : (Array.isArray(employee.events) ? employee.events : []);
@@ -394,6 +402,13 @@ class Game {
             }
         }
         return `на грани побега (${mood.toFixed(0)})`;
+    }
+
+    getMoodClass(moodScore) {
+        const mood = Number(moodScore || 0);
+        if (mood >= 30) return 'mood-good';
+        if (mood >= -10) return 'mood-neutral';
+        return 'mood-bad';
     }
 
     init() {
@@ -722,15 +737,28 @@ class Game {
     }
 
     updateEmployeeMood(employee, event) {
-        const salaryRatio = employee.currentSalary / Math.max(employee.marketSalary, 1);
-        const salaryContribution = (salaryRatio - 1) * 30; // -30…+30
+        const salaryRatio = employee.currentSalary / Math.max(employee.marketSalary || employee.baseSalary || 1, 1);
+        let salaryContribution = (salaryRatio - 1) * 70; // сильнее влияние
+        if (salaryRatio >= 1.5) {
+            salaryContribution += 25;
+        } else if (salaryRatio >= 1.25) {
+            salaryContribution += 15;
+        }
+        if (salaryRatio < 0.8) {
+            salaryContribution -= 25;
+        }
         let eventContribution = 0;
         if (event) {
             if (event.type === 'positive') eventContribution = 25;
             if (event.type === 'negative') eventContribution = -35;
             if (event.type === 'neutral') eventContribution = 5;
         }
-        employee.moodScore = Math.max(-100, Math.min(100, (employee.moodScore || 0) * 0.5 + salaryContribution + eventContribution));
+        employee.moodScore = Math.max(-100, Math.min(100, (employee.moodScore || 0) * 0.4 + salaryContribution + eventContribution));
+        if (salaryRatio >= 1.25 && (employee.warning || employee.pendingDeparture)) {
+            employee.warning = null;
+            employee.pendingDeparture = null;
+            employee.weeksSinceWarning = 0;
+        }
     }
 
     evaluateEmployeeRetention(employee) {
@@ -779,6 +807,11 @@ class Game {
             reputationChange: 0
         });
         this.print(`[${employee.name}] сигнализирует о желании уволиться (${employee.warning.source}).`, 'warning');
+        this.showNotification({
+            title: `${employee.name} недоволен`,
+            message: employee.warning.source,
+            tone: 'warning'
+        });
     }
 
     forceEmployeeDeparture(employee, reason, sudden = false) {
@@ -794,6 +827,11 @@ class Game {
             this.state.reputation = Math.max(0, this.state.reputation - 3);
         }
         this.print(`[${employee.name}] уволился. Причина: ${finalReason}`, 'error');
+        this.showNotification({
+            title: `${employee.name} ушёл`,
+            message: finalReason,
+            tone: 'error'
+        });
         this.state.employees = this.state.employees.filter(emp => emp.id !== employee.id);
     }
 
@@ -904,8 +942,11 @@ class Game {
             statsBtn.classList.add('employee-stats-btn');
             statsBtn.textContent = 'Статистика';
             statsBtn.type = 'button';
-            statsBtn.disabled = true;
-            statsBtn.title = 'Скоро появится модалка статистики';
+            statsBtn.title = 'Открыть статистику';
+            statsBtn.addEventListener('click', event => {
+                event.stopPropagation();
+                this.openEmployeeStats(emp);
+            });
             actions.appendChild(statsBtn);
 
             container.appendChild(removeBtn);
@@ -1030,6 +1071,9 @@ class Game {
     }
 
     openEmployeeStats(employee) {
+        if (globalStatsModal && globalStatsModal.classList.contains('visible')) {
+            this.closeGlobalStatsModal();
+        }
         this.employeeIdPendingStats = employee.id;
         this.renderEmployeeModal(employee);
         employeeStatsModal.classList.add('visible');
@@ -1083,10 +1127,71 @@ class Game {
         });
     }
 
+    renderGlobalStatsList() {
+        if (!globalStatsList) {
+            return;
+        }
+        globalStatsList.innerHTML = '';
+        if (this.state.employees.length === 0) {
+            const empty = document.createElement('p');
+            empty.textContent = 'Нет сотрудников. Наймите кого-нибудь, чтобы не работать в одиночку.';
+            globalStatsList.appendChild(empty);
+            return;
+        }
+        this.state.employees.forEach(emp => {
+            const card = document.createElement('div');
+            card.classList.add('global-stats-item');
+            const mood = emp.moodScore || 0;
+            const warningBadge = emp.warning ? `<span class="status-badge status-warning">Есть предупреждение</span>` : '';
+            const pendingBadge = emp.pendingDeparture ? `<span class="status-badge status-pending">Готовится к уходу</span>` : '';
+            card.innerHTML = `
+                <div class="global-stats-header">
+                    <strong>${emp.name}</strong>
+                    <span class="mood-chip ${this.getMoodClass(mood)}">${this.describeMood(mood)}</span>
+                </div>
+                <div class="global-stats-footer">
+                    <span>Роль: ${emp.roleLabel}</span>
+                    <span>Зарплата: $${this.formatMoney(emp.currentSalary)}/нед</span>
+                    <span>Рыночная: $${this.formatMoney(emp.marketSalary)}/нед</span>
+                    ${warningBadge}${pendingBadge}
+                </div>
+                <div class="global-stats-actions">
+                    <button class="employee-stats-btn small" data-employee-id="${emp.id}">Подробно</button>
+                </div>
+            `;
+            const openBtn = card.querySelector('.global-stats-actions .employee-stats-btn');
+            openBtn.addEventListener('click', () => this.openEmployeeStats(emp));
+            globalStatsList.appendChild(card);
+        });
+    }
+
+    openGlobalStatsModal() {
+        this.renderGlobalStatsList();
+        if (!globalStatsModal) {
+            return;
+        }
+        globalStatsModal.classList.add('visible');
+        globalStatsModal.setAttribute('aria-hidden', 'false');
+    }
+
+    closeGlobalStatsModal() {
+        if (!globalStatsModal) {
+            return;
+        }
+        globalStatsModal.classList.remove('visible');
+        globalStatsModal.setAttribute('aria-hidden', 'true');
+    }
+
     closeEmployeeStatsModal() {
         this.employeeIdPendingStats = null;
         employeeStatsModal.classList.remove('visible');
         employeeStatsModal.setAttribute('aria-hidden', 'true');
+    }
+
+    getMinimumSalary(employee) {
+        const basedOnCurrent = Math.round((employee.currentSalary || 0) * 0.2);
+        const basedOnMarket = Math.round((employee.marketSalary || employee.baseSalary || 0) * 0.5);
+        return Math.max(50, basedOnCurrent, basedOnMarket);
     }
 
     handleEmployeeSalarySave() {
@@ -1108,6 +1213,12 @@ class Game {
             return;
         }
 
+        const minAllowed = this.getMinimumSalary(employee);
+        if (newSalary < minAllowed) {
+            this.print(`Нельзя снижать зарплату ниже $${this.formatMoney(minAllowed)} (не менее 20% от текущей).`, 'warning');
+            return;
+        }
+
         const delta = newSalary - employee.currentSalary;
         if (delta === 0) {
             this.print('Зарплата не изменилась.', 'info');
@@ -1115,7 +1226,14 @@ class Game {
         }
 
         employee.currentSalary = newSalary;
-        employee.marketSalary = Math.max(employee.marketSalary, newSalary);
+        employee.lastSalaryChangeWeek = this.state.currentWeek;
+        const ratioToMarket = newSalary / Math.max(employee.marketSalary || 1, 1);
+        if (ratioToMarket >= 1.2) {
+            employee.moodScore = Math.max(employee.moodScore || 0, 60 + (ratioToMarket - 1.2) * 50);
+            employee.warning = null;
+            employee.pendingDeparture = null;
+            employee.weeksSinceWarning = 0;
+        }
         const message = delta > 0
             ? `Зарплата повышена на $${this.formatMoney(delta)}`
             : `Зарплата снижена на $${this.formatMoney(Math.abs(delta))}`;
@@ -1131,12 +1249,30 @@ class Game {
         this.refreshAllPanels();
     }
 
+    showNotification({ title, message, tone = 'info', timeout = 5000 }) {
+        if (!notificationsContainer) {
+            return;
+        }
+        const card = document.createElement('div');
+        card.classList.add('notification-card', tone);
+        card.innerHTML = `
+            <h4>${title}</h4>
+            <p>${message}</p>
+        `;
+        notificationsContainer.appendChild(card);
+        setTimeout(() => card.classList.add('hide'), timeout - 400);
+        setTimeout(() => card.remove(), timeout);
+    }
+
     refreshAllPanels() {
         this.renderGameStats();
         this.renderHiredEmployees();
         this.renderActiveProjects();
         this.renderHirePanel();
         this.renderProjectsPanel();
+        if (globalStatsModal && globalStatsModal.classList.contains('visible')) {
+            this.renderGlobalStatsList();
+        }
         this.updateControlsState();
         this.persistState();
     }
@@ -1270,6 +1406,20 @@ fireConfirmModal.addEventListener('click', event => {
     }
 });
 
+if (openGlobalStatsBtn) {
+    openGlobalStatsBtn.addEventListener('click', () => game.openGlobalStatsModal());
+}
+if (closeGlobalStatsBtn) {
+    closeGlobalStatsBtn.addEventListener('click', () => game.closeGlobalStatsModal());
+}
+if (globalStatsModal) {
+    globalStatsModal.addEventListener('click', event => {
+        if (event.target === globalStatsModal) {
+            game.closeGlobalStatsModal();
+        }
+    });
+}
+
 saveEmployeeSalaryBtn.addEventListener('click', () => game.handleEmployeeSalarySave());
 closeEmployeeModalBtn.addEventListener('click', () => game.closeEmployeeStatsModal());
 employeeStatsModal.addEventListener('click', event => {
@@ -1282,5 +1432,6 @@ document.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
         game.closeFireModal();
         game.closeEmployeeStatsModal();
+        game.closeGlobalStatsModal();
     }
 });

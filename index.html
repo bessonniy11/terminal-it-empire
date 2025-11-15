@@ -22,6 +22,7 @@
                 <button class="control-btn" data-command="help">Help</button>
                 <button class="control-btn" data-command="status">Status</button>
                 <button class="control-btn" data-command="reset">Reset Game</button>
+                <button class="control-btn stats-modal-btn" id="open-global-stats">Team Status</button>
                 <button class="control-btn next-week-btn" data-command="nextweek">Next Week</button>
             </div>
         </div>
@@ -124,6 +125,16 @@
             </div>
         </div>
     </div>
+
+    <div id="global-stats-modal" class="modal-overlay" aria-hidden="true">
+        <div class="modal-content global-modal">
+            <button class="modal-close-btn" id="close-global-stats" aria-label="Закрыть">&times;</button>
+            <h3>Команда</h3>
+            <div id="global-stats-list" class="global-stats-list"></div>
+        </div>
+    </div>
+
+    <div id="notifications-container" aria-live="assertive"></div>
 
     <script src="data.js"></script>
     <script src="script.js"></script>
