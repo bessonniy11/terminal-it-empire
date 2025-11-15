@@ -57,6 +57,76 @@ const EMPLOYEE_NEUTRAL_EVENTS = [
     'много учился и писал документацию, влияние нейтральное'
 ];
 
+const DEPARTURE_REASONS = {
+    salary: [
+        'устал работать за еду',
+        'сами работайте за такие деньги',
+        'захотел зарплату в валюте, а не в респектах',
+        'решил монетизировать талант дороже',
+        'нашёл оффер в три раза выше, пока',
+        'перешёл туда, где оплачивают переработки',
+        'не хочет больше обменивать талант на доширак',
+        'устал слышать слово "премия" только в будущем времени',
+        'нашёл компанию без совета жаб по экономии',
+        'забрал клавиатуру и ушёл торговаться за деньги',
+        'зарплата покрывает только кофе, а он любит еду',
+        'хочет оклад, который видит налоговая',
+        'решил прекратить бартер "код за печеньки"',
+        'обиделся, что его грейд выше, чем оклад',
+        'говорит, что с таким прайсом даже ИИ обиделся'
+    ],
+    burnout: [
+        'выгорел и ушёл выращивать базилик',
+        'решил сделать паузу и написать книгу о том, как ничего не писать',
+        'уехал в горы без Wi-Fi',
+        'ушёл искать дзен в офлайн-библиотеке',
+        'решил лечиться от Jira-триггеров',
+        'устал объяснять, что "ещё один хотфикс" — это боль',
+        'взял отпуск на неопределённое “не звоните мне”',
+        'решил сменить IDE на сапёр'
+    ],
+    growth: [
+        'получил оффер с окладом в 3 раза больше, пока неудачники',
+        'переходит в стартап мечты (там обещали кота в офисе)',
+        'решил стать CTO в своём гараже',
+        'ушёл в GameDev, потому что принёс геймдизайн в отчёт',
+        'нашёл команду, где coffee-to-code ratio выше',
+        'не смог отказаться от проекта “убить легаси” в другой компании'
+    ],
+    ignored: [
+        'говорил о проблемах, но стена молчала',
+        'достучаться до менеджмента не смог, зато до выхода смог',
+        'решил не ждать, пока “подумаем” растянется на годы',
+        'устал шептать в пустоту о повышении',
+        'снял с доски “подумать позже” и ушёл с ней',
+        'считает, что его предупреждение ушло в чёрную дыру'
+    ],
+    sudden: [
+        'получил оффер на Мальдивах, ноут забрал с собой',
+        'его похитил конкурент, обещавший макбуки с M9',
+        'говорят, ФСБ забрало — теперь он DevOps в тайне',
+        'улетел на конференцию и не вернулся',
+        'решил стать digital-номадом без обратного билета',
+        'влюбился в продукт конкурента и убежал к нему'
+    ],
+    neutral: [
+        'переехал в другой город',
+        'решил заняться семейным бизнесом',
+        'ушёл в долгий отпуск по уходу за котом',
+        'сменил сферу на преподавание',
+        'решил попробовать силы в музыке',
+        'ушёл учиться на психолога для разработчиков',
+        'просто хотел перемен',
+        'сказал “было весело” и ушёл к закату'
+    ],
+    sad: [
+        'выгорел так сильно, что перестал верить в ночные сборки',
+        'сказал “я устал” и отключил все уведомления',
+        'устал чинить чужие ошибки и ушёл чинить себя',
+        'решил поставить здоровье выше дедлайнов'
+    ]
+};
+
 function hasLocalStorage() {
     try {
         return typeof window !== 'undefined' && 'localStorage' in window && window.localStorage !== null;
@@ -199,6 +269,40 @@ class Game {
             positiveBias: positive,
             negativeBias: negative
         };
+    }
+
+    pickRandom(array) {
+        if (!Array.isArray(array) || array.length === 0) {
+            return '';
+        }
+        const index = Math.floor(Math.random() * array.length);
+        return array[index];
+    }
+
+    composeDepartureReason(baseReason = '', sudden = false) {
+        const lower = (baseReason || '').toLowerCase();
+        if (sudden) {
+            return this.pickRandom(DEPARTURE_REASONS.sudden);
+        }
+        if (lower.includes('зарплат') || lower.includes('оффер') || lower.includes('еда')) {
+            return this.pickRandom(DEPARTURE_REASONS.salary);
+        }
+        if (lower.includes('выгор')) {
+            return this.pickRandom(DEPARTURE_REASONS.burnout);
+        }
+        if (lower.includes('игнор') || lower.includes('предупреж')) {
+            return this.pickRandom(DEPARTURE_REASONS.ignored);
+        }
+        if (lower.includes('долго')) {
+            return this.pickRandom(DEPARTURE_REASONS.neutral);
+        }
+        if (Math.random() < 0.2) {
+            return this.pickRandom(DEPARTURE_REASONS.sad);
+        }
+        if (Math.random() < 0.5) {
+            return this.pickRandom(DEPARTURE_REASONS.growth);
+        }
+        return this.pickRandom(DEPARTURE_REASONS.neutral);
     }
 
     init() {
@@ -593,17 +697,18 @@ class Game {
     }
 
     forceEmployeeDeparture(employee, reason, sudden = false) {
+        const finalReason = this.composeDepartureReason(reason, sudden);
         this.recordEmployeeEvent(employee, {
             week: this.state.currentWeek,
             type: 'system',
-            message: sudden ? `Внезапное увольнение: ${reason}` : `Уволился: ${reason}`,
+            message: sudden ? `Внезапное увольнение: ${finalReason}` : `Уволился: ${finalReason}`,
             moneyChange: 0,
             reputationChange: sudden ? -5 : -2
         });
         if (sudden) {
             this.state.reputation = Math.max(0, this.state.reputation - 3);
         }
-        this.print(`[${employee.name}] уволился. Причина: ${reason}`, 'error');
+        this.print(`[${employee.name}] уволился. Причина: ${finalReason}`, 'error');
         this.state.employees = this.state.employees.filter(emp => emp.id !== employee.id);
     }
 
