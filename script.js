@@ -5,6 +5,9 @@ const gameControls = document.getElementById('game-controls');
 const statWeek = document.getElementById('stat-week');
 const statMoney = document.getElementById('stat-money');
 const statReputation = document.getElementById('stat-reputation');
+const winInfoBtn = document.getElementById('win-info-btn');
+const winTooltip = document.getElementById('win-tooltip');
+let winTooltipPinned = false;
 const hiredEmployeesList = document.getElementById('hired-employees-list');
 const activeProjectsList = document.getElementById('active-projects-list');
 const hirePanel = document.getElementById('hire-panel');
@@ -40,6 +43,8 @@ const SAVE_KEY = 'tib-save';
 const SCHEMA_VERSION = 1;
 const LOG_LIMIT = 200;
 const EMPLOYEE_EVENT_LIMIT = 30;
+const WIN_MONEY = 1000000;
+const WIN_REPUTATION = 5000;
 
 const DEFAULT_ECONOMY = Object.freeze({
     salaryScale: 1,
@@ -1179,8 +1184,6 @@ class Game {
             this.state.gameOver = true;
         }
 
-        const WIN_MONEY = 1000000;
-        const WIN_REPUTATION = 5000;
         if (!this.state.gameOver && this.state.money >= WIN_MONEY && this.state.reputation >= WIN_REPUTATION) {
             this.print(`Победа! На счету $${this.formatMoney(this.state.money)} и ${this.state.reputation} репутации.`, 'success');
             this.state.gameOver = true;
@@ -1204,6 +1207,10 @@ class Game {
         statWeek.textContent = this.state.currentWeek;
         statMoney.textContent = this.formatMoney(this.state.money);
         statReputation.textContent = this.state.reputation;
+        if (winTooltip) {
+            const winReputationLabel = WIN_REPUTATION.toLocaleString('ru-RU');
+            winTooltip.textContent = `Победа: баланс $${this.formatMoney(WIN_MONEY)} и репутация ${winReputationLabel} одновременно.`;
+        }
     }
 
     renderHiredEmployees() {
@@ -1728,6 +1735,7 @@ terminalInput.addEventListener('keydown', event => {
 
 document.addEventListener('DOMContentLoaded', () => {
     game.init();
+    initWinTooltip();
 
     document.querySelectorAll('.control-btn').forEach(button => {
         button.addEventListener('click', () => {
@@ -1795,5 +1803,55 @@ document.addEventListener('keydown', event => {
         game.closeFireModal();
         game.closeEmployeeStatsModal();
         game.closeGlobalStatsModal();
+        collapseWinTooltip();
     }
 });
+
+function initWinTooltip() {
+    if (!winInfoBtn || !winTooltip) {
+        return;
+    }
+    const setVisible = visible => {
+        if (visible) {
+            winTooltip.classList.add('visible');
+        } else {
+            winTooltip.classList.remove('visible');
+        }
+    };
+    const hideIfNotPinned = () => {
+        if (!winTooltipPinned) {
+            setVisible(false);
+        }
+    };
+    winInfoBtn.addEventListener('mouseenter', () => {
+        if (!winTooltipPinned) {
+            setVisible(true);
+        }
+    });
+    winInfoBtn.addEventListener('mouseleave', hideIfNotPinned);
+    winInfoBtn.addEventListener('focus', () => setVisible(true));
+    winInfoBtn.addEventListener('blur', hideIfNotPinned);
+    winInfoBtn.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        winTooltipPinned = !winTooltipPinned;
+        setVisible(winTooltipPinned || winInfoBtn.matches(':hover'));
+    });
+    document.addEventListener('click', event => {
+        if (!winTooltipPinned) {
+            return;
+        }
+        if (winInfoBtn.contains(event.target) || winTooltip.contains(event.target)) {
+            return;
+        }
+        collapseWinTooltip();
+    });
+}
+
+function collapseWinTooltip() {
+    if (!winTooltip) {
+        return;
+    }
+    winTooltipPinned = false;
+    winTooltip.classList.remove('visible');
+}

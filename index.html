@@ -31,7 +31,13 @@
     <div class="info-block-wrapper">
         <div class="info-block">
             <div id="game-stats" class="game-panel">
-                <h2>Статистика</h2>
+                <h2 class="stats-title">
+                    <span>Статистика</span>
+                    <button id="win-info-btn" class="win-info-btn" type="button" aria-label="Условия победы" aria-describedby="win-tooltip">🏆</button>
+                    <span id="win-tooltip" class="win-tooltip" role="tooltip">
+                        Баланс $1 000 000 и репутация 5 000 одновременно.
+                    </span>
+                </h2>
                 <p>Неделя: <span id="stat-week">1</span></p>
                 <p>Деньги: $<span id="stat-money">20000</span></p>
                 <p>Репутация: <span id="stat-reputation">15</span></p>
