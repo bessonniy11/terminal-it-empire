@@ -344,8 +344,10 @@ class Game {
             if (typeof employee.behaviorProfile.lowExpectations !== 'boolean') {
                 employee.behaviorProfile.lowExpectations = false;
             }
-            if (typeof employee.behaviorProfile.growth !== 'boolean') {
-                employee.behaviorProfile.growth = employee.type !== 'senior-dev' && Math.random() < 0.4;
+            if (employee.behaviorProfile.lowExpectations) {
+                employee.behaviorProfile.growth = false;
+            } else if (typeof employee.behaviorProfile.growth !== 'boolean') {
+                employee.behaviorProfile.growth = employee.type !== 'senior-dev' && Math.random() < 0.25;
             }
             employee.moodScore = typeof employee.moodScore === 'number' ? employee.moodScore : 0;
             employee.warning = employee.warning || null;
@@ -390,7 +392,7 @@ class Game {
             negativeBias: 0.2,
             learningRate: 0.01 + Math.random() * 0.02,
             lowExpectations: false,
-            growth: type !== 'senior-dev' && Math.random() < 0.4
+            growth: false
         };
         if (type === 'junior-dev') {
             const chaotic = Math.random() < 0.5;
@@ -399,23 +401,22 @@ class Game {
                 profile.negativeBias = 0.45 + Math.random() * 0.12;
                 profile.learningRate = 0.002 + Math.random() * 0.004;
                 profile.lowExpectations = true;
-                profile.growth = Math.random() < 0.35;
             } else {
                 profile.positiveBias = 0.5 + Math.random() * 0.1;
                 profile.negativeBias = 0.12 + Math.random() * 0.06;
-                profile.growth = true;
             }
         } else if (type === 'mid-dev') {
             profile.positiveBias = 0.4 + (Math.random() - 0.5) * 0.15;
             profile.negativeBias = 0.2 + (Math.random() - 0.5) * 0.1;
-            profile.growth = Math.random() < 0.45;
         } else if (type === 'senior-dev') {
             profile.positiveBias = 0.5 + Math.random() * 0.1;
             profile.negativeBias = 0.12 + Math.random() * 0.08;
-            profile.growth = false;
         }
         profile.positiveBias = Math.min(0.85, Math.max(0.1, profile.positiveBias));
         profile.negativeBias = Math.min(0.6, Math.max(0.05, profile.negativeBias));
+        if (!profile.lowExpectations && type !== 'senior-dev' && Math.random() < 0.25) {
+            profile.growth = true;
+        }
         return profile;
     }
 
