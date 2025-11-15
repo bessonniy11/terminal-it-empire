@@ -382,12 +382,13 @@ class Game {
         if (type === 'junior-dev') {
             const chaotic = Math.random() < 0.5;
             if (chaotic) {
-                profile.positiveBias = 0.25 + Math.random() * 0.05;
-                profile.negativeBias = 0.35 + Math.random() * 0.15;
+                profile.positiveBias = 0.15 + Math.random() * 0.1;
+                profile.negativeBias = 0.45 + Math.random() * 0.12;
+                profile.learningRate = 0.002 + Math.random() * 0.004;
                 profile.lowExpectations = true;
             } else {
-                profile.positiveBias = 0.45 + Math.random() * 0.15;
-                profile.negativeBias = 0.15 + Math.random() * 0.1;
+                profile.positiveBias = 0.5 + Math.random() * 0.1;
+                profile.negativeBias = 0.12 + Math.random() * 0.06;
             }
         } else if (type === 'mid-dev') {
             profile.positiveBias = 0.4 + (Math.random() - 0.5) * 0.15;
@@ -1150,9 +1151,6 @@ class Game {
     }
 
     openEmployeeStats(employee) {
-        if (globalStatsModal && globalStatsModal.classList.contains('visible')) {
-            this.closeGlobalStatsModal();
-        }
         this.employeeIdPendingStats = employee.id;
         this.renderEmployeeModal(employee);
         employeeStatsModal.classList.add('visible');
