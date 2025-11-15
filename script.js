@@ -149,12 +149,17 @@ class Game {
             if (employee.eventLog.length > EMPLOYEE_EVENT_LIMIT) {
                 employee.eventLog.splice(0, employee.eventLog.length - EMPLOYEE_EVENT_LIMIT);
             }
+            employee.behaviorProfile = employee.behaviorProfile || this.generateBehaviorProfile(employee.type);
+            employee.moodScore = typeof employee.moodScore === 'number' ? employee.moodScore : 0;
+            employee.warning = employee.warning || null;
+            employee.pendingDeparture = employee.pendingDeparture || null;
+            employee.weeksSinceWarning = typeof employee.weeksSinceWarning === 'number' ? employee.weeksSinceWarning : 0;
+            employee.lastSalaryChangeWeek = typeof employee.lastSalaryChangeWeek === 'number'
+                ? employee.lastSalaryChangeWeek
+                : this.state.currentWeek || 1;
             if (!employee.roleLabel) {
                 const typeRef = GAME_DATA.employeeTypes.find(type => type.type === employee.type);
                 employee.roleLabel = typeRef ? typeRef.label : employee.type;
-            }
-            if (!employee.behaviorProfile) {
-                employee.behaviorProfile = this.generateBehaviorProfile(employee.type);
             }
         });
 
@@ -311,7 +316,12 @@ class Game {
             marketSalary,
             skills: { ...employeeData.skills },
             eventLog: [],
-            behaviorProfile: this.generateBehaviorProfile(employeeData.type)
+            behaviorProfile: this.generateBehaviorProfile(employeeData.type),
+            moodScore: 0,
+            warning: null,
+            pendingDeparture: null,
+            weeksSinceWarning: 0,
+            lastSalaryChangeWeek: this.state.currentWeek
         };
 
         this.state.money -= hireCost;
@@ -448,9 +458,13 @@ class Game {
         this.state.employees.forEach(employee => {
             const event = this.createEmployeeEvent(employee);
             if (!event) {
+                this.updateEmployeeMood(employee, null);
+                this.evaluateEmployeeRetention(employee);
                 return;
             }
             this.applyEmployeeEvent(employee, event);
+            this.updateEmployeeMood(employee, event);
+            this.evaluateEmployeeRetention(employee);
         });
     }
 
@@ -492,7 +506,16 @@ class Game {
         });
 
         const tone = event.type === 'positive' ? 'success' : event.type === 'negative' ? 'warning' : 'info';
-        this.print(`[${employee.name}] ${event.message}`, tone);
+        const deltas = [];
+        if (event.moneyChange) {
+            const amount = `$${this.formatMoney(Math.abs(event.moneyChange))}`;
+            deltas.push(`${event.moneyChange > 0 ? '+' : '-'}${amount}`);
+        }
+        if (event.reputationChange) {
+            deltas.push(`репутация ${event.reputationChange > 0 ? '+' : ''}${event.reputationChange}`);
+        }
+        const suffix = deltas.length ? ` (${deltas.join(', ')})` : '';
+        this.print(`[${employee.name}] ${event.message}${suffix}`, tone);
     }
 
     recordEmployeeEvent(employee, entry) {
@@ -501,6 +524,87 @@ class Game {
         if (employee.eventLog.length > EMPLOYEE_EVENT_LIMIT) {
             employee.eventLog.splice(0, employee.eventLog.length - EMPLOYEE_EVENT_LIMIT);
         }
+    }
+
+    updateEmployeeMood(employee, event) {
+        const salaryRatio = employee.currentSalary / Math.max(employee.marketSalary, 1);
+        const salaryContribution = (salaryRatio - 1) * 30; // -30…+30
+        let eventContribution = 0;
+        if (event) {
+            if (event.type === 'positive') eventContribution = 25;
+            if (event.type === 'negative') eventContribution = -35;
+            if (event.type === 'neutral') eventContribution = 5;
+        }
+        employee.moodScore = Math.max(-100, Math.min(100, (employee.moodScore || 0) * 0.5 + salaryContribution + eventContribution));
+    }
+
+    evaluateEmployeeRetention(employee) {
+        const mood = employee.moodScore || 0;
+        if (employee.pendingDeparture) {
+            employee.pendingDeparture.weeks += 1;
+            if (employee.pendingDeparture.weeks >= employee.pendingDeparture.timeout) {
+                this.forceEmployeeDeparture(employee, employee.pendingDeparture.reason || 'Слишком долго игнорировали запрос.');
+                employee.pendingDeparture = null;
+                return;
+            }
+        }
+
+        if (employee.warning) {
+            employee.weeksSinceWarning += 1;
+            if (mood > 10) {
+                this.print(`[${employee.name}] успокоился и остался в команде.`, 'info');
+                employee.warning = null;
+                employee.weeksSinceWarning = 0;
+            } else if (employee.weeksSinceWarning >= 3) {
+                if (!employee.pendingDeparture) {
+                    employee.pendingDeparture = { weeks: 0, timeout: 2, reason: 'Предупреждение игнорировалось.' };
+                    this.print(`[${employee.name}] готовится к уходу, осталось мало времени.`, 'warning');
+                }
+            }
+        }
+
+        if (mood < -40 && !employee.warning && Math.random() < 0.7) {
+            this.issueWarning(employee);
+        } else if (mood < -70 && Math.random() < 0.3) {
+            this.forceEmployeeDeparture(employee, 'Сотрудник внезапно ушёл (предложение от другой компании).', true);
+        }
+    }
+
+    issueWarning(employee) {
+        const sources = [
+            'Личное сообщение сотрудника',
+            'Услышали через менеджера',
+            'Коллеги сообщили о недовольстве',
+            'Узнали по внутреннему опросу'
+        ];
+        employee.warning = {
+            week: this.state.currentWeek,
+            source: sources[Math.floor(Math.random() * sources.length)]
+        };
+        employee.weeksSinceWarning = 0;
+        this.recordEmployeeEvent(employee, {
+            week: this.state.currentWeek,
+            type: 'warning',
+            message: `Предупреждение об уходе (${employee.warning.source}).`,
+            moneyChange: 0,
+            reputationChange: 0
+        });
+        this.print(`[${employee.name}] сигнализирует о желании уволиться (${employee.warning.source}).`, 'warning');
+    }
+
+    forceEmployeeDeparture(employee, reason, sudden = false) {
+        this.recordEmployeeEvent(employee, {
+            week: this.state.currentWeek,
+            type: 'system',
+            message: sudden ? `Внезапное увольнение: ${reason}` : `Уволился: ${reason}`,
+            moneyChange: 0,
+            reputationChange: sudden ? -5 : -2
+        });
+        if (sudden) {
+            this.state.reputation = Math.max(0, this.state.reputation - 3);
+        }
+        this.print(`[${employee.name}] уволился. Причина: ${reason}`, 'error');
+        this.state.employees = this.state.employees.filter(emp => emp.id !== employee.id);
     }
 
     processGlobalEvent() {
