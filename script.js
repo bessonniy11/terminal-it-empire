@@ -16,15 +16,46 @@ const fireConfirmRole = document.getElementById('fire-confirm-role');
 const confirmFireBtn = document.getElementById('confirm-fire-btn');
 const cancelFireBtn = document.getElementById('cancel-fire-btn');
 
+const employeeStatsModal = document.getElementById('employee-stats-modal');
+const employeeModalName = document.getElementById('employee-modal-name');
+const employeeModalRole = document.getElementById('employee-modal-role');
+const employeeModalCurrentSalary = document.getElementById('employee-modal-current-salary');
+const employeeModalMarketSalary = document.getElementById('employee-modal-market-salary');
+const employeeEventsList = document.getElementById('employee-events-list');
+const employeeSalaryInput = document.getElementById('employee-salary-input');
+const saveEmployeeSalaryBtn = document.getElementById('save-employee-salary');
+const closeEmployeeModalBtn = document.getElementById('close-employee-modal');
+
 const SAVE_KEY = 'tib-save';
 const SCHEMA_VERSION = 1;
 const LOG_LIMIT = 200;
+const EMPLOYEE_EVENT_LIMIT = 30;
 
 const DEFAULT_ECONOMY = Object.freeze({
     salaryScale: 1,
     projectScale: 1,
     inflationInterval: 10
 });
+
+const EMPLOYEE_POSITIVE_EVENTS = [
+    { message: 'нашёл узкое место и ускорил билд', moneyChange: 600, reputationChange: 2 },
+    { message: 'починил критический баг клиента', moneyChange: 800, reputationChange: 3 },
+    { message: 'оптимизировал тесты, команда быстрее завершила спринт', reputationChange: 2 },
+    { message: 'получил похвалу клиента за качество', moneyChange: 400, reputationChange: 4 }
+];
+
+const EMPLOYEE_NEGATIVE_EVENTS = [
+    { message: 'допустил критический баг, клиент потребовал компенсацию', moneyChange: -900, reputationChange: -3 },
+    { message: 'сорвал дедлайн задачи', reputationChange: -2 },
+    { message: 'забыл покрыть тестами модуль, пришлось переделывать', moneyChange: -400 },
+    { message: 'отправил неготовый релиз, пришлось устранять последствия', moneyChange: -700, reputationChange: -2 }
+];
+
+const EMPLOYEE_NEUTRAL_EVENTS = [
+    'занимался рефакторингом, без особых событий',
+    'помог коллегам с ревью, неделя прошла спокойно',
+    'много учился и писал документацию, влияние нейтральное'
+];
 
 function hasLocalStorage() {
     try {
@@ -93,6 +124,7 @@ class Game {
         this.state = loadState();
         this.commands = {};
         this.employeeIdPendingFire = null;
+        this.employeeIdPendingStats = null;
         this.ensureStateShape();
         this.initCommands();
     }
@@ -111,10 +143,18 @@ class Game {
             employee.baseSalary = typeof employee.baseSalary === 'number' ? employee.baseSalary : employee.salary || 0;
             employee.currentSalary = typeof employee.currentSalary === 'number' ? employee.currentSalary : employee.baseSalary;
             employee.marketSalary = typeof employee.marketSalary === 'number' ? employee.marketSalary : employee.currentSalary;
-            employee.events = Array.isArray(employee.events) ? employee.events : [];
+            employee.eventLog = Array.isArray(employee.eventLog)
+                ? employee.eventLog
+                : (Array.isArray(employee.events) ? employee.events : []);
+            if (employee.eventLog.length > EMPLOYEE_EVENT_LIMIT) {
+                employee.eventLog.splice(0, employee.eventLog.length - EMPLOYEE_EVENT_LIMIT);
+            }
             if (!employee.roleLabel) {
                 const typeRef = GAME_DATA.employeeTypes.find(type => type.type === employee.type);
                 employee.roleLabel = typeRef ? typeRef.label : employee.type;
+            }
+            if (!employee.behaviorProfile) {
+                employee.behaviorProfile = this.generateBehaviorProfile(employee.type);
             }
         });
 
@@ -137,6 +177,23 @@ class Game {
         this.commands.project = this.cmdProject.bind(this);
         this.commands.nextweek = this.cmdNextWeek.bind(this);
         this.commands.reset = this.cmdReset.bind(this);
+    }
+
+    generateBehaviorProfile(type) {
+        const base = { positive: 0.35, negative: 0.2 };
+        if (type === 'junior-dev') {
+            base.positive = 0.3;
+            base.negative = 0.3;
+        } else if (type === 'senior-dev') {
+            base.positive = 0.45;
+            base.negative = 0.15;
+        }
+        const positive = Math.min(0.8, Math.max(0.1, base.positive + (Math.random() - 0.5) * 0.2));
+        const negative = Math.min(0.6, Math.max(0.05, base.negative + (Math.random() - 0.5) * 0.15));
+        return {
+            positiveBias: positive,
+            negativeBias: negative
+        };
     }
 
     init() {
@@ -253,7 +310,8 @@ class Game {
             currentSalary: marketSalary,
             marketSalary,
             skills: { ...employeeData.skills },
-            events: []
+            eventLog: [],
+            behaviorProfile: this.generateBehaviorProfile(employeeData.type)
         };
 
         this.state.money -= hireCost;
@@ -370,8 +428,10 @@ class Game {
             return true;
         });
 
-        this.processRandomEvent();
+        this.processEmployeeEvents();
+        this.processGlobalEvent();
         this.evaluateWinLose();
+        this.refreshAllPanels();
     }
 
     cmdReset() {
@@ -384,7 +444,66 @@ class Game {
         this.init();
     }
 
-    processRandomEvent() {
+    processEmployeeEvents() {
+        this.state.employees.forEach(employee => {
+            const event = this.createEmployeeEvent(employee);
+            if (!event) {
+                return;
+            }
+            this.applyEmployeeEvent(employee, event);
+        });
+    }
+
+    createEmployeeEvent(employee) {
+        const profile = employee.behaviorProfile || this.generateBehaviorProfile(employee.type);
+        const roll = Math.random();
+        const negativeThreshold = profile.negativeBias;
+        const positiveThreshold = profile.negativeBias + profile.positiveBias;
+
+        if (roll < negativeThreshold) {
+            const template = EMPLOYEE_NEGATIVE_EVENTS[Math.floor(Math.random() * EMPLOYEE_NEGATIVE_EVENTS.length)];
+            return { ...template, type: 'negative' };
+        }
+        if (roll < positiveThreshold) {
+            const template = EMPLOYEE_POSITIVE_EVENTS[Math.floor(Math.random() * EMPLOYEE_POSITIVE_EVENTS.length)];
+            return { ...template, type: 'positive' };
+        }
+        if (Math.random() < 0.4) {
+            const message = EMPLOYEE_NEUTRAL_EVENTS[Math.floor(Math.random() * EMPLOYEE_NEUTRAL_EVENTS.length)];
+            return { message, type: 'neutral' };
+        }
+        return null;
+    }
+
+    applyEmployeeEvent(employee, event) {
+        if (event.moneyChange) {
+            this.state.money += event.moneyChange;
+        }
+        if (event.reputationChange) {
+            this.state.reputation += event.reputationChange;
+        }
+
+        this.recordEmployeeEvent(employee, {
+            week: this.state.currentWeek,
+            type: event.type,
+            message: event.message,
+            moneyChange: event.moneyChange || 0,
+            reputationChange: event.reputationChange || 0
+        });
+
+        const tone = event.type === 'positive' ? 'success' : event.type === 'negative' ? 'warning' : 'info';
+        this.print(`[${employee.name}] ${event.message}`, tone);
+    }
+
+    recordEmployeeEvent(employee, entry) {
+        employee.eventLog = Array.isArray(employee.eventLog) ? employee.eventLog : [];
+        employee.eventLog.push(entry);
+        if (employee.eventLog.length > EMPLOYEE_EVENT_LIMIT) {
+            employee.eventLog.splice(0, employee.eventLog.length - EMPLOYEE_EVENT_LIMIT);
+        }
+    }
+
+    processGlobalEvent() {
         const chance = 0.3 + (this.state.reputation / 100) * 0.2;
         if (Math.random() >= chance) {
             return;
@@ -415,7 +534,7 @@ class Game {
             this.print('Компания обанкротилась. Денег нет.', 'error');
             this.state.gameOver = true;
         } else if (this.state.reputation < 0) {
-            this.print('Репутация уничтожена — клиенты ушли.', 'error');
+            this.print('Репутация разрушена — клиенты ушли.', 'error');
             this.state.gameOver = true;
         }
 
@@ -429,7 +548,6 @@ class Game {
         if (this.state.gameOver) {
             this.print('Игра завершена. Введите reset или обновите страницу.', 'info');
         }
-        this.refreshAllPanels();
     }
 
     calculateTotalSkills() {
@@ -617,6 +735,100 @@ class Game {
         });
     }
 
+    openEmployeeStats(employee) {
+        this.employeeIdPendingStats = employee.id;
+        this.renderEmployeeModal(employee);
+        employeeStatsModal.classList.add('visible');
+        employeeStatsModal.setAttribute('aria-hidden', 'false');
+    }
+
+    renderEmployeeModal(employee) {
+        employeeModalName.textContent = employee.name;
+        employeeModalRole.textContent = employee.roleLabel;
+        employeeModalCurrentSalary.textContent = this.formatMoney(employee.currentSalary);
+        employeeModalMarketSalary.textContent = this.formatMoney(employee.marketSalary);
+        employeeSalaryInput.value = employee.currentSalary;
+        this.renderEmployeeEventsList(employee);
+    }
+
+    renderEmployeeEventsList(employee) {
+        employeeEventsList.innerHTML = '';
+        const events = Array.isArray(employee.eventLog) ? [...employee.eventLog] : [];
+        if (events.length === 0) {
+            const emptyItem = document.createElement('li');
+            emptyItem.textContent = 'Пока нет событий для этого сотрудника.';
+            emptyItem.classList.add('employee-event-item', 'neutral');
+            employeeEventsList.appendChild(emptyItem);
+            return;
+        }
+        events.slice().reverse().forEach(entry => {
+            const item = document.createElement('li');
+            item.classList.add('employee-event-item', entry.type || 'neutral');
+            const details = [];
+            if (entry.moneyChange) {
+                details.push(`$${this.formatMoney(entry.moneyChange)}`);
+            }
+            if (entry.reputationChange) {
+                details.push(`репутация ${entry.reputationChange > 0 ? '+' : ''}${entry.reputationChange}`);
+            }
+            const weekLabel = entry.week == null ? '—' : entry.week;
+            item.innerHTML = `
+                <span class="event-week">Неделя ${weekLabel}</span>
+                <div class="event-message">${entry.message}</div>
+                ${details.length ? `<div class="event-details">${details.join(', ')}</div>` : ''}
+            `;
+            employeeEventsList.appendChild(item);
+        });
+    }
+
+    closeEmployeeStatsModal() {
+        this.employeeIdPendingStats = null;
+        employeeStatsModal.classList.remove('visible');
+        employeeStatsModal.setAttribute('aria-hidden', 'true');
+    }
+
+    handleEmployeeSalarySave() {
+        if (this.employeeIdPendingStats === null) {
+            return;
+        }
+        const employee = this.state.employees.find(emp => emp.id === this.employeeIdPendingStats);
+        if (!employee) {
+            this.closeEmployeeStatsModal();
+            return;
+        }
+        const newSalary = Number(employeeSalaryInput.value);
+        if (!Number.isFinite(newSalary) || newSalary <= 0) {
+            this.print('Укажите корректную зарплату.', 'warning');
+            return;
+        }
+        if (newSalary > this.state.money) {
+            this.print('Недостаточно бюджета, чтобы гарантировать такую зарплату.', 'warning');
+            return;
+        }
+
+        const delta = newSalary - employee.currentSalary;
+        if (delta === 0) {
+            this.print('Зарплата не изменилась.', 'info');
+            return;
+        }
+
+        employee.currentSalary = newSalary;
+        employee.marketSalary = Math.max(employee.marketSalary, newSalary);
+        const message = delta > 0
+            ? `Зарплата повышена на $${this.formatMoney(delta)}`
+            : `Зарплата снижена на $${this.formatMoney(Math.abs(delta))}`;
+        this.recordEmployeeEvent(employee, {
+            week: this.state.currentWeek,
+            type: 'system',
+            message,
+            moneyChange: 0,
+            reputationChange: 0
+        });
+        this.print(`[${employee.name}] ${message}.`, delta > 0 ? 'success' : 'warning');
+        this.renderEmployeeModal(employee);
+        this.refreshAllPanels();
+    }
+
     refreshAllPanels() {
         this.renderGameStats();
         this.renderHiredEmployees();
@@ -756,8 +968,17 @@ fireConfirmModal.addEventListener('click', event => {
     }
 });
 
+saveEmployeeSalaryBtn.addEventListener('click', () => game.handleEmployeeSalarySave());
+closeEmployeeModalBtn.addEventListener('click', () => game.closeEmployeeStatsModal());
+employeeStatsModal.addEventListener('click', event => {
+    if (event.target === employeeStatsModal) {
+        game.closeEmployeeStatsModal();
+    }
+});
+
 document.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
         game.closeFireModal();
+        game.closeEmployeeStatsModal();
     }
 });

@@ -796,3 +796,133 @@ body {
 .modal-btn.danger:hover {
     background-color: rgba(220, 53, 69, 0.15);
 }
+
+.employee-modal {
+    max-width: 600px;
+    position: relative;
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    border: none;
+    background: transparent;
+    color: #aaa;
+    font-size: 1.4em;
+    cursor: pointer;
+}
+
+.employee-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.employee-summary-name {
+    font-size: 1.4em;
+    color: #fff;
+    font-weight: 600;
+}
+
+.employee-summary-role {
+    font-size: 0.9em;
+    text-transform: uppercase;
+    color: #63ff88;
+    letter-spacing: 0.08em;
+}
+
+.employee-summary-salary {
+    display: flex;
+    gap: 12px;
+    font-size: 0.9em;
+    color: #9cc69c;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.salary-editor {
+    margin-top: 10px;
+}
+
+.salary-editor-control {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 6px 0;
+}
+
+#employee-salary-input {
+    width: 120px;
+    padding: 6px;
+    background: #111;
+    border: 1px solid #0f0;
+    color: #0f0;
+    border-radius: 4px;
+}
+
+.salary-editor-hint {
+    margin: 0;
+    font-size: 0.8em;
+    color: #909090;
+}
+
+.employee-events h4 {
+    margin: 0 0 10px;
+    color: #fff;
+}
+
+.employee-events-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 250px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.employee-event-item {
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.9em;
+}
+
+.employee-event-item span {
+    display: inline-block;
+    margin-right: 6px;
+}
+
+.employee-event-item .event-week {
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.employee-event-item .event-details {
+    font-size: 0.8em;
+    color: #9fb5a9;
+    margin-top: 4px;
+}
+
+.employee-event-item.positive {
+    border-color: #1baa63;
+    color: #8df5b8;
+}
+
+.employee-event-item.negative {
+    border-color: #cc4949;
+    color: #ff9595;
+}
+
+.employee-event-item.neutral {
+    border-color: #6c6c6c;
+    color: #d0d0d0;
+}
+
+.employee-event-item.system {
+    border-color: #4aa0ff;
+    color: #add6ff;
+}

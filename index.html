@@ -84,10 +84,39 @@
     <div id="fire-confirm-modal" class="modal-overlay" aria-hidden="true">
         <div class="modal-content">
             <h3>Уволить сотрудника?</h3>
-            <p>Вы действительно хотите расстаться c <span id="fire-confirm-name"></span> (<span id="fire-confirm-role"></span>)?</p>
+            <p>Вы уверены, что хотите расстаться с <span id="fire-confirm-name"></span> (<span id="fire-confirm-role"></span>)?</p>
             <div class="modal-actions">
                 <button id="confirm-fire-btn" class="modal-btn danger">Уволить</button>
                 <button id="cancel-fire-btn" class="modal-btn">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="employee-stats-modal" class="modal-overlay" aria-hidden="true">
+        <div class="modal-content employee-modal">
+            <button class="modal-close-btn" id="close-employee-modal" aria-label="Закрыть">&times;</button>
+            <h3>Статистика сотрудника</h3>
+            <div class="employee-modal-body">
+                <div class="employee-summary">
+                    <div class="employee-summary-name" id="employee-modal-name"></div>
+                    <div class="employee-summary-role" id="employee-modal-role"></div>
+                    <div class="employee-summary-salary">
+                        <span>Текущая зарплата: $<span id="employee-modal-current-salary"></span>/нед</span>
+                        <span>Рыночная: $<span id="employee-modal-market-salary"></span>/нед</span>
+                    </div>
+                    <div class="salary-editor">
+                        <label for="employee-salary-input">Изменить зарплату:</label>
+                        <div class="salary-editor-control">
+                            <input type="number" id="employee-salary-input" min="0" step="100">
+                            <button id="save-employee-salary" class="modal-btn">Сохранить</button>
+                        </div>
+                        <p class="salary-editor-hint">Повышайте зарплату сильным сотрудникам, чтобы удерживать их в компании.</p>
+                    </div>
+                </div>
+                <div class="employee-events">
+                    <h4>История событий</h4>
+                    <ul id="employee-events-list" class="employee-events-list"></ul>
+                </div>
             </div>
         </div>
     </div>
@@ -96,5 +125,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-
-
