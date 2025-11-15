@@ -828,6 +828,15 @@ body {
     background-color: rgba(220, 53, 69, 0.15);
 }
 
+.modal-btn.secondary {
+    border-color: #66ff99;
+    color: #66ff99;
+}
+
+.modal-btn.secondary:hover {
+    background-color: rgba(102, 255, 153, 0.12);
+}
+
 .employee-modal {
     max-width: 600px;
     position: relative;
@@ -965,6 +974,11 @@ body {
     color: #ffd98e;
 }
 
+.status-promo {
+    border-color: #8ec5ff;
+    color: #8ec5ff;
+}
+
 #notifications-container {
     position: fixed;
     top: 90px;
@@ -1058,6 +1072,17 @@ body {
     color: #ff9a9a;
     font-size: 0.8em;
     min-height: 1.2em;
+}
+
+.promotion-section {
+    margin-top: 10px;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.promotion-section.visible {
+    display: flex;
 }
 
 .employee-events h4 {

@@ -25,6 +25,9 @@ const employeeModalWarning = document.getElementById('employee-modal-warning');
 const employeeEventsList = document.getElementById('employee-events-list');
 const employeeSalaryInput = document.getElementById('employee-salary-input');
 const employeeSalaryError = document.getElementById('employee-salary-error');
+const promoteEmployeeBtn = document.getElementById('promote-employee-btn');
+const employeePromotionSection = document.getElementById('employee-promotion-section');
+const employeePromotionText = document.getElementById('employee-promotion-text');
 const saveEmployeeSalaryBtn = document.getElementById('save-employee-salary');
 const closeEmployeeModalBtn = document.getElementById('close-employee-modal');
 const openGlobalStatsBtn = document.getElementById('open-global-stats');
@@ -338,6 +341,12 @@ class Game {
                 employee.eventLog.splice(0, employee.eventLog.length - EMPLOYEE_EVENT_LIMIT);
             }
             employee.behaviorProfile = employee.behaviorProfile || this.generateBehaviorProfile(employee.type);
+            if (typeof employee.behaviorProfile.lowExpectations !== 'boolean') {
+                employee.behaviorProfile.lowExpectations = false;
+            }
+            if (typeof employee.behaviorProfile.growth !== 'boolean') {
+                employee.behaviorProfile.growth = employee.type !== 'senior-dev' && Math.random() < 0.4;
+            }
             employee.moodScore = typeof employee.moodScore === 'number' ? employee.moodScore : 0;
             employee.warning = employee.warning || null;
             employee.pendingDeparture = employee.pendingDeparture || null;
@@ -345,6 +354,9 @@ class Game {
             employee.lastSalaryChangeWeek = typeof employee.lastSalaryChangeWeek === 'number'
                 ? employee.lastSalaryChangeWeek
                 : this.state.currentWeek || 1;
+            employee.weeksInRole = typeof employee.weeksInRole === 'number' ? employee.weeksInRole : 0;
+            employee.promotionRequest = employee.promotionRequest || null;
+            employee.promotionWarning = employee.promotionWarning || null;
             if (!employee.roleLabel) {
                 const typeRef = GAME_DATA.employeeTypes.find(type => type.type === employee.type);
                 employee.roleLabel = typeRef ? typeRef.label : employee.type;
@@ -377,7 +389,8 @@ class Game {
             positiveBias: 0.35,
             negativeBias: 0.2,
             learningRate: 0.01 + Math.random() * 0.02,
-            lowExpectations: false
+            lowExpectations: false,
+            growth: type !== 'senior-dev' && Math.random() < 0.4
         };
         if (type === 'junior-dev') {
             const chaotic = Math.random() < 0.5;
@@ -386,16 +399,20 @@ class Game {
                 profile.negativeBias = 0.45 + Math.random() * 0.12;
                 profile.learningRate = 0.002 + Math.random() * 0.004;
                 profile.lowExpectations = true;
+                profile.growth = Math.random() < 0.35;
             } else {
                 profile.positiveBias = 0.5 + Math.random() * 0.1;
                 profile.negativeBias = 0.12 + Math.random() * 0.06;
+                profile.growth = true;
             }
         } else if (type === 'mid-dev') {
             profile.positiveBias = 0.4 + (Math.random() - 0.5) * 0.15;
             profile.negativeBias = 0.2 + (Math.random() - 0.5) * 0.1;
+            profile.growth = Math.random() < 0.45;
         } else if (type === 'senior-dev') {
             profile.positiveBias = 0.5 + Math.random() * 0.1;
             profile.negativeBias = 0.12 + Math.random() * 0.08;
+            profile.growth = false;
         }
         profile.positiveBias = Math.min(0.85, Math.max(0.1, profile.positiveBias));
         profile.negativeBias = Math.min(0.6, Math.max(0.05, profile.negativeBias));
@@ -454,6 +471,43 @@ class Game {
         if (mood >= 30) return 'mood-good';
         if (mood >= -10) return 'mood-neutral';
         return 'mood-bad';
+    }
+
+    promoteEmployee(employee) {
+        const target = this.getPromotionTarget(employee.type);
+        if (!target) {
+            this.print('Для этого сотрудника нет следующего грейда.', 'warning');
+            return;
+        }
+        const targetData = target.data;
+        employee.type = targetData.type;
+        employee.roleLabel = targetData.label;
+        employee.baseSalary = targetData.baseSalary;
+        employee.marketSalary = this.getScaledSalary(targetData.baseSalary);
+        employee.currentSalary = Math.max(employee.currentSalary, employee.marketSalary);
+        employee.skills = { ...targetData.skills };
+        employee.behaviorProfile = this.generateBehaviorProfile(targetData.type);
+        employee.weeksInRole = 0;
+        employee.promotionRequest = null;
+        employee.promotionWarning = null;
+        employee.warning = null;
+        employee.pendingDeparture = null;
+        employee.moodScore = Math.max(employee.moodScore || 0, 55);
+        this.recordEmployeeEvent(employee, {
+            week: this.state.currentWeek,
+            type: 'system',
+            message: `Повышен до ${targetData.label}.`,
+            moneyChange: 0,
+            reputationChange: 0
+        });
+        this.print(`[${employee.name}] повышен до ${targetData.label}.`, 'success');
+        this.showNotification({
+            title: `${employee.name} повышен`,
+            message: `Новая роль — ${targetData.label}`,
+            tone: 'success'
+        });
+        this.renderEmployeeModal(employee);
+        this.refreshAllPanels();
     }
 
     init() {
@@ -576,7 +630,10 @@ class Game {
             warning: null,
             pendingDeparture: null,
             weeksSinceWarning: 0,
-            lastSalaryChangeWeek: this.state.currentWeek
+            lastSalaryChangeWeek: this.state.currentWeek,
+            weeksInRole: 0,
+            promotionRequest: null,
+            promotionWarning: null
         };
 
         this.state.money -= hireCost;
@@ -717,12 +774,14 @@ class Game {
                 this.updateEmployeeMood(employee, null);
                 this.evaluateEmployeeRetention(employee);
                 this.improveBehaviorProfile(employee);
+                this.handleCareerProgression(employee);
                 return;
             }
             this.applyEmployeeEvent(employee, event);
             this.updateEmployeeMood(employee, event);
             this.evaluateEmployeeRetention(employee);
             this.improveBehaviorProfile(employee);
+            this.handleCareerProgression(employee);
         });
     }
 
@@ -783,6 +842,97 @@ class Game {
         }
         profile.negativeBias = Math.max(0.05, profile.negativeBias - profile.learningRate);
         profile.positiveBias = Math.min(0.85, profile.positiveBias + profile.learningRate * 0.5);
+    }
+
+    handleCareerProgression(employee) {
+        if (!employee || employee.type === 'senior-dev') {
+            return;
+        }
+        employee.weeksInRole = (employee.weeksInRole || 0) + 1;
+        const target = this.getPromotionTarget(employee.type);
+        if (!target || !employee.behaviorProfile?.growth) {
+            employee.promotionRequest = null;
+            employee.promotionWarning = null;
+            return;
+        }
+
+        if (!employee.promotionRequest) {
+            if (employee.weeksInRole >= 12 && (employee.moodScore || 0) > 25) {
+                this.createPromotionRequest(employee, target);
+            }
+            return;
+        }
+
+        employee.promotionRequest.weeksWaiting += 1;
+        if (!employee.promotionRequest.warningIssued && employee.promotionRequest.weeksWaiting >= 4) {
+            this.issuePromotionWarning(employee);
+        } else if (employee.promotionRequest.warningIssued && employee.promotionRequest.weeksWaiting >= 8) {
+            if (Math.random() < 0.35) {
+                this.forceEmployeeDeparture(employee, `Не получил повышение до ${employee.promotionRequest.targetLabel}`);
+                return;
+            }
+        }
+    }
+
+    createPromotionRequest(employee, target) {
+        employee.promotionRequest = {
+            targetType: target.type,
+            targetLabel: target.label,
+            weeksWaiting: 0,
+            warningIssued: false
+        };
+        const message = `${employee.name} считает, что готов стать ${target.label}.`;
+        this.recordEmployeeEvent(employee, {
+            week: this.state.currentWeek,
+            type: 'system',
+            message,
+            moneyChange: 0,
+            reputationChange: 0
+        });
+        this.print(message, 'info');
+        this.showNotification({
+            title: `${employee.name} хочет роста`,
+            message: `Хочет стать ${target.label}`,
+            tone: 'info'
+        });
+    }
+
+    issuePromotionWarning(employee) {
+        if (!employee.promotionRequest) {
+            return;
+        }
+        employee.promotionRequest.warningIssued = true;
+        const msg = `${employee.name} недоволен отсутствием повышения до ${employee.promotionRequest.targetLabel}.`;
+        employee.promotionWarning = msg;
+        this.recordEmployeeEvent(employee, {
+            week: this.state.currentWeek,
+            type: 'warning',
+            message: `Предупреждение: ${msg}`,
+            moneyChange: 0,
+            reputationChange: 0
+        });
+        this.print(msg, 'warning');
+        this.showNotification({
+            title: `${employee.name} ждёт решения`,
+            message: `Нужно повысить до ${employee.promotionRequest.targetLabel}`,
+            tone: 'warning'
+        });
+    }
+
+    getPromotionTarget(type) {
+        const map = {
+            'junior-dev': 'mid-dev',
+            'mid-dev': 'senior-dev'
+        };
+        const targetType = map[type];
+        if (!targetType) {
+            return null;
+        }
+        const data = GAME_DATA.employeeTypes.find(t => t.type === targetType);
+        if (!data) {
+            return null;
+        }
+        return { type: data.type, label: data.label, data };
     }
 
     recordEmployeeEvent(employee, entry) {
@@ -1174,6 +1324,27 @@ class Game {
         if (employeeSalaryError) {
             employeeSalaryError.textContent = '';
         }
+        const target = this.getPromotionTarget(employee.type);
+        if (target && employeePromotionSection) {
+            employeePromotionSection.classList.add('visible');
+            const request = employee.promotionRequest;
+            const messages = [];
+            messages.push(`Следующий грейд: ${target.label}.`);
+            if (request) {
+                messages.push(`Запрос на повышение ожидает ${request.weeksWaiting} нед.`);
+            }
+            if (employee.promotionWarning) {
+                messages.push(employee.promotionWarning);
+            }
+            employeePromotionText.textContent = messages.join(' ');
+            promoteEmployeeBtn.disabled = false;
+            promoteEmployeeBtn.textContent = `Повысить до ${target.label}`;
+        } else if (employeePromotionSection) {
+            employeePromotionSection.classList.remove('visible');
+            employeePromotionText.textContent = '';
+            promoteEmployeeBtn.textContent = 'Повысить';
+            promoteEmployeeBtn.disabled = true;
+        }
         this.renderEmployeeEventsList(employee);
     }
 
@@ -1224,6 +1395,7 @@ class Game {
             const mood = emp.moodScore || 0;
             const warningBadge = emp.warning ? `<span class="status-badge status-warning">Есть предупреждение</span>` : '';
             const pendingBadge = emp.pendingDeparture ? `<span class="status-badge status-pending">Готовится к уходу</span>` : '';
+            const promoBadge = emp.promotionRequest ? `<span class="status-badge status-promo">Ждёт повышение</span>` : '';
             card.innerHTML = `
                 <div class="global-stats-header">
                     <strong>${emp.name}</strong>
@@ -1233,7 +1405,7 @@ class Game {
                     <span>Роль: ${emp.roleLabel}</span>
                     <span>Зарплата: $${this.formatMoney(emp.currentSalary)}/нед</span>
                     <span>Рыночная: $${this.formatMoney(emp.marketSalary)}/нед</span>
-                    ${warningBadge}${pendingBadge}
+                    ${warningBadge}${pendingBadge}${promoBadge}
                 </div>
                 <div class="global-stats-actions">
                     <button class="employee-stats-btn small" data-employee-id="${emp.id}">Подробно</button>
@@ -1507,6 +1679,17 @@ if (globalStatsModal) {
 }
 
 saveEmployeeSalaryBtn.addEventListener('click', () => game.handleEmployeeSalarySave());
+if (promoteEmployeeBtn) {
+    promoteEmployeeBtn.addEventListener('click', () => {
+        if (game.employeeIdPendingStats === null) {
+            return;
+        }
+        const employee = game.state.employees.find(emp => emp.id === game.employeeIdPendingStats);
+        if (employee) {
+            game.promoteEmployee(employee);
+        }
+    });
+}
 closeEmployeeModalBtn.addEventListener('click', () => game.closeEmployeeStatsModal());
 employeeStatsModal.addEventListener('click', event => {
     if (event.target === employeeStatsModal) {
