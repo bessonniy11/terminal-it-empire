@@ -337,32 +337,36 @@ body {
     min-height: 0;
     overflow-y: auto;
 }
-.employee-item, .active-project-item {
+
+.employee-item,
+.active-project-item {
     background-color: #1a1a1a;
     border: 1px solid #444;
     border-radius: 5px;
-    padding: 8px;
+    padding: 12px;
     display: flex;
-    align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
+
 .employee-item {
-    position: relative;
-    padding: 12px 52px 12px 12px;
-    min-height: 52px;
+    align-items: flex-start;
 }
+
+.active-project-item {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
 .employee-item .emoji {
-    font-size: 1.5em;
+    font-size: 1.8em;
+    margin-right: 2px;
+    white-space: nowrap;
 }
-.employee-item span, .active-project-item span {
-    color: #0f0;
-}
+
 .fire-employee-trigger {
-    position: absolute;
-    top: 6px;
-    right: 6px; /* Перемещаем в правый верхний угол */
-    width: 28px;
-    height: 28px;
+    position: static;
+    width: 32px;
+    height: 32px;
     border-radius: 4px;
     border: 1px solid #dc3545;
     background: rgba(220, 53, 69, 0.2);
@@ -372,14 +376,87 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    margin-right: 4px;
     cursor: pointer;
     transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
+
 .fire-employee-trigger:hover {
     background: rgba(220, 53, 69, 0.4);
     box-shadow: 0 0 8px rgba(220, 53, 69, 0.5);
 }
-/* Стили для карточек сотрудников */
+
+.employee-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1 1 auto;
+}
+
+.employee-name {
+    font-weight: 600;
+    color: #fff;
+}
+
+.employee-role {
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #8bf18b;
+}
+
+.employee-salary {
+    font-size: 0.9em;
+    color: #0f0;
+}
+
+.employee-skills {
+    font-size: 0.8em;
+    color: #96a09f;
+}
+
+.employee-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.employee-stats-btn {
+    border: 1px solid #0f0;
+    background: transparent;
+    color: #0f0;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.employee-stats-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.project-name {
+    font-weight: 600;
+    color: #fff;
+}
+
+.project-progress,
+.project-eta,
+.project-reward {
+    font-size: 0.9em;
+    color: #0f0;
+}
+
+.empty-placeholder {
+    text-align: center;
+    color: #7c848a;
+    font-size: 0.9em;
+    padding: 20px 0;
+}
+
+
 .employee-card {
     background-color: #1a1a1a;
     border: 1px solid #444;
@@ -404,6 +481,23 @@ body {
     margin-top: 0;
     margin-bottom: 5px;
     font-size: 1.1em;
+}
+
+.employee-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.employee-type-tag {
+    font-size: 0.7em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #0f0;
+    border: 1px solid #0f0;
+    border-radius: 4px;
+    padding: 2px 6px;
 }
 .employee-card p {
     margin: 0;

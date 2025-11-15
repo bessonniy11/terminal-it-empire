@@ -2,17 +2,14 @@
 const terminalInput = document.getElementById('terminal-input');
 const gameControls = document.getElementById('game-controls');
 
-// Обновленные ссылки на DOM-элементы для новой структуры
-const activeProjectsPanel = document.getElementById('active-projects-panel');
-const activeProjectsList = document.getElementById('active-projects-list');
-const gameStatsPanel = document.getElementById('game-stats');
 const statWeek = document.getElementById('stat-week');
 const statMoney = document.getElementById('stat-money');
 const statReputation = document.getElementById('stat-reputation');
-const hiredEmployeesPanel = document.getElementById('hired-employees-panel');
 const hiredEmployeesList = document.getElementById('hired-employees-list');
+const activeProjectsList = document.getElementById('active-projects-list');
 const hirePanel = document.getElementById('hire-panel');
 const projectsPanel = document.getElementById('projects-panel');
+
 const fireConfirmModal = document.getElementById('fire-confirm-modal');
 const fireConfirmName = document.getElementById('fire-confirm-name');
 const fireConfirmRole = document.getElementById('fire-confirm-role');
@@ -22,6 +19,12 @@ const cancelFireBtn = document.getElementById('cancel-fire-btn');
 const SAVE_KEY = 'tib-save';
 const SCHEMA_VERSION = 1;
 const LOG_LIMIT = 200;
+
+const DEFAULT_ECONOMY = Object.freeze({
+    salaryScale: 1,
+    projectScale: 1,
+    inflationInterval: 10
+});
 
 function hasLocalStorage() {
     try {
@@ -38,6 +41,10 @@ function cloneInitialState() {
     if (!Array.isArray(clone.log)) {
         clone.log = [];
     }
+    if (typeof clone.lastEmployeeId !== 'number') {
+        clone.lastEmployeeId = 0;
+    }
+    clone.economy = { ...DEFAULT_ECONOMY, ...(clone.economy || {}) };
     return clone;
 }
 
@@ -59,12 +66,12 @@ function loadState() {
             return fallback;
         }
         const merged = { ...fallback, ...parsed };
-        if (!Array.isArray(merged.log)) {
-            merged.log = [];
-        }
+        merged.log = Array.isArray(merged.log) ? merged.log : [];
+        merged.economy = { ...DEFAULT_ECONOMY, ...(merged.economy || {}) };
+        merged.lastEmployeeId = typeof merged.lastEmployeeId === 'number' ? merged.lastEmployeeId : 0;
         return merged;
     } catch (error) {
-        console.warn('Failed to load state, using defaults', error);
+        console.warn('Failed to load state, fallback to defaults.', error);
         return fallback;
     }
 }
@@ -80,34 +87,47 @@ function saveState(state) {
         console.warn('Failed to save state', error);
     }
 }
-// Удаляем ссылки на терминал-шторку и кнопку переключения, т.к. терминал всегда видим
-// const terminalDrawerContainer = document.getElementById('terminal-drawer-container');
-// const toggleTerminalBtn = document.getElementById('toggle-terminal-btn');
-const gameLayout = document.querySelector('.game-layout');
 
 class Game {
     constructor() {
         this.state = loadState();
-        if (!Array.isArray(this.state.log)) {
-            this.state.log = [];
-        }
         this.commands = {};
-        this.initCommands();
         this.employeeIdPendingFire = null;
+        this.ensureStateShape();
+        this.initCommands();
     }
 
-    init() {
-        const hadLog = this.restoreLog();
-        if (!hadLog) {
-            this.print('Добро пожаловать в Terminal IT Empire!');
-            this.print('Управляйте своей IT-компанией с помощью команд.');
-            this.print('Наберите \'help\' для списка доступных команд.');
+    ensureStateShape() {
+        if (!this.state || typeof this.state !== 'object') {
+            this.state = cloneInitialState();
         }
-        this.refreshAllPanels();
-    }
+        this.state.log = Array.isArray(this.state.log) ? this.state.log : [];
+        this.state.employees = Array.isArray(this.state.employees) ? this.state.employees : [];
+        this.state.projects = Array.isArray(this.state.projects) ? this.state.projects : [];
+        this.state.economy = { ...DEFAULT_ECONOMY, ...(this.state.economy || {}) };
+        this.state.lastEmployeeId = typeof this.state.lastEmployeeId === 'number' ? this.state.lastEmployeeId : 0;
 
-    print(message, type = 'info') {
-        this.appendLogEntry(message, type, { store: true });
+        this.state.employees.forEach(employee => {
+            employee.baseSalary = typeof employee.baseSalary === 'number' ? employee.baseSalary : employee.salary || 0;
+            employee.currentSalary = typeof employee.currentSalary === 'number' ? employee.currentSalary : employee.baseSalary;
+            employee.marketSalary = typeof employee.marketSalary === 'number' ? employee.marketSalary : employee.currentSalary;
+            employee.events = Array.isArray(employee.events) ? employee.events : [];
+            if (!employee.roleLabel) {
+                const typeRef = GAME_DATA.employeeTypes.find(type => type.type === employee.type);
+                employee.roleLabel = typeRef ? typeRef.label : employee.type;
+            }
+        });
+
+        this.state.projects.forEach(project => {
+            project.baseReward = typeof project.baseReward === 'number' ? project.baseReward : project.reward || 0;
+            project.currentReward = typeof project.currentReward === 'number' ? project.currentReward : project.baseReward;
+            project.progress = typeof project.progress === 'number' ? project.progress : 0;
+            project.remainingDuration = typeof project.remainingDuration === 'number' ? project.remainingDuration : project.duration;
+            project.currentSkillPoints = typeof project.currentSkillPoints === 'number' ? project.currentSkillPoints : 0;
+            project.skillPointsNeeded = typeof project.skillPointsNeeded === 'number'
+                ? project.skillPointsNeeded
+                : (project.requiredSkills?.coding || 0) * (project.duration || 1);
+        });
     }
 
     initCommands() {
@@ -119,309 +139,170 @@ class Game {
         this.commands.reset = this.cmdReset.bind(this);
     }
 
+    init() {
+        const hadLog = this.restoreLog();
+        if (!hadLog) {
+            this.print('Добро пожаловать в Terminal IT Empire!');
+            this.print('Постройте лучшую студию: нанимайте специалистов и закрывайте проекты.');
+            this.print('Введите help, чтобы увидеть список команд.');
+        }
+        this.refreshAllPanels();
+    }
+
+    print(message, type = 'info') {
+        this.appendLogEntry(message, type, { store: true });
+    }
+
     handleCommand(input) {
-        if (this.state.gameOver && input.toLowerCase() !== 'reset') {
-            this.print('Игра окончена. Нажмите F5 для новой игры или наберите \'reset\' чтобы начать заново.');
+        const normalized = (input || '').trim();
+        if (!normalized) {
             return;
         }
 
-        const parts = input.toLowerCase().trim().split(' ');
+        if (this.state.gameOver && normalized.toLowerCase() !== 'reset') {
+            this.print('Игра завершена. Введите reset, чтобы начать заново.');
+            return;
+        }
+
+        const parts = normalized.toLowerCase().split(' ');
         const command = parts[0];
         const args = parts.slice(1);
 
-        this.print(`$ ${input}`);
+        this.print(`$ ${normalized}`);
 
         if (this.commands[command]) {
             this.commands[command](args);
         } else {
-            this.print(`Неизвестная команда: ${command}. Наберите 'help' для списка команд.`);
+            this.print(`Неизвестная команда: ${command}. Введите help для подсказки.`, 'warning');
         }
-        this.refreshAllPanels(); // Теперь вызываем новую функцию
+        this.refreshAllPanels();
     }
 
-    cmdHelp(args) {
+    cmdHelp() {
         this.print('Доступные команды:');
-        this.print('  help - Показать список команд');
-        this.print('  status - Показать текущий статус компании (подробно в терминале, основное в панелях)');
-        this.print('  hire <тип> - Нанять нового сотрудника (например, \'hire junior-dev\')');
-        this.print('  project <название> - Начать новый проект (например, \'project Simple Landing Page\')');
-        this.print('  nextweek - Перейти к следующей неделе');
-        this.print('  reset - Начать новую игру');
+        this.print('  help — показать это окно помощи');
+        this.print('  status — вывести состояние компании');
+        this.print('  hire <тип> — нанять сотрудника (например, hire junior-dev)');
+        this.print('  project <название> — взять проект (например, project Simple Landing Page)');
+        this.print('  nextweek — перейти к следующей неделе');
+        this.print('  reset — начать игру заново');
     }
 
-    cmdStatus(args) {
-        // Вывод деталей в терминал, основная информация теперь в панелях
-        this.print('-- Подробный статус компании --');
+    cmdStatus() {
+        this.print('-- Статус компании --');
         this.print(`Неделя: ${this.state.currentWeek}`);
-        this.print(`Деньги: $${this.state.money}`);
+        this.print(`Баланс: $${this.formatMoney(this.state.money)}`);
         this.print(`Репутация: ${this.state.reputation}`);
+
         this.print('Сотрудники:');
         if (this.state.employees.length === 0) {
-            this.print('  У вас пока нет сотрудников.');
+            this.print('  Пока никого не наняли.');
         } else {
             this.state.employees.forEach(emp => {
-                this.print(`  - ${emp.name} (ID: ${emp.id}, ${emp.type}), ЗП: $${emp.salary}, Навыки: Coding: ${emp.skills.coding}, Bugfixing: ${emp.skills.bugfixing}`);
+                this.print(
+                    `  - ${emp.name} (${emp.roleLabel}), зарплата $${this.formatMoney(emp.currentSalary)}; ` +
+                    `навыки Coding ${emp.skills.coding}, Bugfixing ${emp.skills.bugfixing}`
+                );
             });
         }
-        this.print('Текущие проекты:');
+
+        this.print('Активные проекты:');
         if (this.state.projects.length === 0) {
-            this.print('  Нет активных проектов.');
+            this.print('  Нет проектов в работе.');
         } else {
             this.state.projects.forEach(proj => {
-                this.print(`  - ${proj.name} (Осталось: ${proj.remainingDuration} недель), Прогресс: ${proj.progress.toFixed(2)}%`);
+                this.print(
+                    `  - ${proj.name}: прогресс ${proj.progress.toFixed(1)}%, осталось ${Math.max(proj.remainingDuration, 0)} нед.`
+                );
             });
         }
-    }
-
-    calculateTotalSkills() {
-        const totalSkills = { coding: 0, bugfixing: 0 };
-        this.state.employees.forEach(emp => {
-            totalSkills.coding += emp.skills.coding;
-            totalSkills.bugfixing += emp.skills.bugfixing;
-        });
-        return totalSkills;
-    }
-
-    // Новая функция для рендеринга статистики
-    renderGameStats() {
-        statWeek.textContent = this.state.currentWeek;
-        statMoney.textContent = this.state.money;
-        statReputation.textContent = this.state.reputation;
-    }
-
-    // Новая функция для рендеринга нанятых сотрудников
-    renderHiredEmployees() {
-        hiredEmployeesList.innerHTML = ''; // Очищаем список
-        const employeeEmojis = {
-            'junior-dev': '🧑‍💻',
-            'mid-dev': '🧑‍💻+🧠',
-            'senior-dev': '👨‍💻'
-        };
-
-        if (this.state.employees.length === 0) {
-            hiredEmployeesList.innerHTML = '<p>У вас пока нет сотрудников.</p>';
-        } else {
-            this.state.employees.forEach(emp => {
-                const employeeItem = document.createElement('div');
-                employeeItem.classList.add('employee-item');
-                const removeBtn = document.createElement('button');
-                removeBtn.classList.add('fire-employee-trigger');
-                removeBtn.innerHTML = '&times;';
-                removeBtn.setAttribute('aria-label', `Уволить ${emp.name}`);
-                removeBtn.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    this.openFireModal(emp);
-                });
-
-                const emojiSpan = document.createElement('span');
-                emojiSpan.classList.add('emoji');
-                emojiSpan.textContent = employeeEmojis[emp.type];
-
-                const infoSpan = document.createElement('span');
-                infoSpan.textContent = `${emp.name} (${emp.type})`;
-
-                employeeItem.appendChild(removeBtn);
-                employeeItem.appendChild(emojiSpan);
-                employeeItem.appendChild(infoSpan);
-                hiredEmployeesList.appendChild(employeeItem);
-            });
-        }
-    }
-
-    // Новая функция для рендеринга активных проектов
-    renderActiveProjects() {
-        activeProjectsList.innerHTML = ''; // Очищаем список
-        if (this.state.projects.length === 0) {
-            activeProjectsList.innerHTML = '<p>Нет активных проектов.</p>';
-        } else {
-            this.state.projects.forEach(proj => {
-                const projectItem = document.createElement('div');
-                projectItem.classList.add('active-project-item');
-                projectItem.innerHTML = `
-                    <span>${proj.name}</span>
-                    <span>Прогресс: ${proj.progress.toFixed(0)}%</span>
-                    <span>Осталось: ${proj.remainingDuration} нед.</span>
-                `;
-                activeProjectsList.appendChild(projectItem);
-            });
-        }
-    }
-
-    renderHirePanel() {
-        hirePanel.innerHTML = '<h2>Нанять сотрудника</h2>';
-        GAME_DATA.employeeTypes.forEach(empType => {
-            const employeeCard = document.createElement('div');
-            employeeCard.classList.add('employee-card');
-            let isDisabled = false;
-            let disableReason = '';
-
-            if (this.state.money < empType.cost) {
-                isDisabled = true;
-                disableReason = 'Недостаточно средств';
-            } else if (this.state.reputation < empType.minReputation) {
-                isDisabled = true;
-                disableReason = `Требуется репутация ${empType.minReputation}+`;
-            }
-
-            if (isDisabled) {
-                employeeCard.classList.add('disabled');
-            } else {
-                employeeCard.addEventListener('click', () => this.handleCommand(`hire ${empType.type}`));
-            }
-
-            employeeCard.innerHTML = `
-                <h3>${empType.type.replace('-', ' ')}</h3>
-                <p>Стоимость: $${empType.cost}</p>
-                <p>Зарплата: $${empType.salary}/неделя</p>
-                <p class="skills">Навыки: Coding: ${empType.skills.coding}, Bugfixing: ${empType.skills.bugfixing}</p>
-                ${isDisabled ? `<p class="error">${disableReason}</p>` : ''}
-            `;
-            hirePanel.appendChild(employeeCard);
-        });
-    }
-
-    renderProjectsPanel() {
-        projectsPanel.innerHTML = '<h2>Доступные проекты</h2><div class="projects-grid"></div>';
-        const projectsGrid = projectsPanel.querySelector('.projects-grid');
-        const totalSkills = this.calculateTotalSkills();
-
-        GAME_DATA.projectTypes.forEach(projType => {
-            const projectCard = document.createElement('div');
-            projectCard.classList.add('project-card', `${projType.size}-project`);
-
-            let isDisabled = false;
-            let disableReason = '';
-            let missingSkills = [];
-
-            if (this.state.projects.some(p => p.name === projType.name)) {
-                isDisabled = true;
-                disableReason = 'Проект уже активен';
-            } else if (this.state.reputation < projType.minReputation) {
-                isDisabled = true;
-                disableReason = `Требуется репутация ${projType.minReputation}+`;
-                for (const skill in projType.requiredSkills) {
-                    if (totalSkills[skill] < projType.requiredSkills[skill]) {
-                        isDisabled = true;
-                        missingSkills.push(`${skill}: требуется ${projType.requiredSkills[skill]}, у вас ${totalSkills[skill]}`);
-                    }
-                }
-                if (missingSkills.length > 0) {
-                    disableReason = 'Недостаточно навыков';
-                }
-            }
-
-            if (isDisabled) {
-                projectCard.classList.add('disabled');
-            } else {
-                projectCard.addEventListener('click', () => this.handleCommand(`project ${projType.name}`));
-            }
-
-            projectCard.innerHTML = `
-                <div class="project-icon">${projType.icon}</div>
-                <h3>${projType.name}</h3>
-                <p>${projType.description}</p>
-                <p class="skills-req">Требуемые навыки: Coding: ${projType.requiredSkills.coding}, Bugfixing: ${projType.requiredSkills.bugfixing}</p>
-                <p>Длительность: ${projType.duration} недель</p>
-                <p>Награда: $${projType.reward}, Репутация: +${projType.reputationGain}</p>
-                ${isDisabled ? `<p class="error">${disableReason}${missingSkills.length > 0 ? ': ' + missingSkills.join(', ') : ''}</p>` : ''}
-            `;
-            projectsGrid.appendChild(projectCard);
-        });
-    }
-
-    // Новая функция для обновления всех панелей
-    refreshAllPanels() {
-        this.renderGameStats();
-        this.renderHiredEmployees();
-        this.renderActiveProjects();
-        this.renderHirePanel();
-        this.renderProjectsPanel();
-        this.persistState();
     }
 
     cmdHire(args) {
-        // Ожидаем, что args[0] будет типом сотрудника (из кнопки)
         if (args.length < 1) {
-            this.print('Использование: hire <тип_сотрудника> (например, \'hire junior-dev\')');
+            this.print('Использование: hire <тип>', 'warning');
             return;
         }
 
-        const employeeType = args[0];
-        const employeeData = GAME_DATA.employeeTypes.find(type => type.type === employeeType);
-
+        const typeName = args[0];
+        const employeeData = GAME_DATA.employeeTypes.find(type => type.type === typeName);
         if (!employeeData) {
-            this.print(`Неизвестный тип сотрудника: ${employeeType}`);
+            this.print(`Неизвестный тип сотрудника: ${typeName}`, 'error');
             return;
         }
 
-        if (this.state.money < employeeData.cost) {
-            this.print(`Недостаточно средств для найма ${employeeType}. Требуется $${employeeData.cost}.`);
+        const hireCost = this.getScaledEmployeeCost(employeeData.baseCost);
+        if (this.state.money < hireCost) {
+            this.print(`Недостаточно денег. Нужна сумма $${this.formatMoney(hireCost)}.`, 'error');
             return;
         }
 
         if (this.state.reputation < employeeData.minReputation) {
-            this.print(`Недостаточно репутации для найма ${employeeType}. Требуется ${employeeData.minReputation}+ репутации.`);
+            this.print(`Нужна репутация ${employeeData.minReputation}+ для найма ${employeeData.label}.`, 'error');
             return;
         }
 
         const randomName = employeeData.nameOptions[Math.floor(Math.random() * employeeData.nameOptions.length)];
+        const marketSalary = this.getScaledSalary(employeeData.baseSalary);
         const newEmployee = {
-            id: this.state.employees.length + 1,
+            id: ++this.state.lastEmployeeId,
             name: randomName,
-            type: employeeType,
-            salary: employeeData.salary,
-            skills: { ...employeeData.skills }
+            type: employeeData.type,
+            roleLabel: employeeData.label,
+            baseSalary: employeeData.baseSalary,
+            currentSalary: marketSalary,
+            marketSalary,
+            skills: { ...employeeData.skills },
+            events: []
         };
 
-        this.state.money -= employeeData.cost;
+        this.state.money -= hireCost;
         this.state.employees.push(newEmployee);
-        this.print(`Нанят новый сотрудник: ${newEmployee.name} (${newEmployee.type})!`, 'success');
-        // this.print(`Ваш баланс: $${this.state.money}`); // Удаляем, т.к. баланс в панели
-        this.refreshAllPanels(); // Обновляем все панели после найма
+        this.print(`Нанят сотрудник ${newEmployee.name} (${newEmployee.roleLabel}).`, 'success');
     }
 
     cmdProject(args) {
-        // Ожидаем, что args будет названием проекта (из кнопки)
         if (args.length < 1) {
-            this.print('Использование: project <название_проекта> (например, \'project Simple Landing Page\')');
+            this.print('Использование: project <название проекта>', 'warning');
             return;
         }
 
-        const projectName = args.join(' '); // Название проекта может содержать пробелы
-        const projectData = GAME_DATA.projectTypes.find(p => p.name.toLowerCase() === projectName.toLowerCase());
-
+        const projectName = args.join(' ').toLowerCase();
+        const projectData = GAME_DATA.projectTypes.find(
+            proj => proj.name.toLowerCase() === projectName
+        );
         if (!projectData) {
-            this.print(`Неизвестный проект: ${projectName}`);
+            this.print(`Неизвестный проект: ${projectName}`, 'error');
             return;
         }
 
-        if (this.state.projects.some(p => p.name.toLowerCase() === projectName.toLowerCase())) {
-            this.print(`Проект '${projectName}' уже активен.`);
+        if (this.state.projects.some(proj => proj.name.toLowerCase() === projectName)) {
+            this.print(`Проект "${projectData.name}" уже выполняется.`, 'warning');
             return;
         }
 
         if (this.state.reputation < projectData.minReputation) {
-            this.print(`Недостаточно репутации для начала проекта '${projectName}'. Требуется ${projectData.minReputation}+ репутации.`);
+            this.print(`Для проекта нужна репутация ${projectData.minReputation}+.`, 'error');
             return;
         }
 
         const totalSkills = this.calculateTotalSkills();
-        let canDoProject = true;
-        let missingSkills = [];
-
-        for (const skill in projectData.requiredSkills) {
+        const missingSkills = [];
+        Object.keys(projectData.requiredSkills).forEach(skill => {
             if (totalSkills[skill] < projectData.requiredSkills[skill]) {
-                canDoProject = false;
-                missingSkills.push(`${skill}: требуется ${projectData.requiredSkills[skill]}, у вас ${totalSkills[skill]}`);
+                missingSkills.push(
+                    `${skill}: требуется ${projectData.requiredSkills[skill]}, у команды ${totalSkills[skill]}`
+                );
             }
-        }
+        });
 
-        if (!canDoProject) {
-            this.print(`Недостаточно навыков для начала проекта '${projectName}':`, 'error');
-            missingSkills.forEach(skill => this.print(`  - ${skill}`));
+        if (missingSkills.length > 0) {
+            this.print(`Недостаточно навыков для проекта "${projectData.name}":`, 'error');
+            missingSkills.forEach(msg => this.print(`  - ${msg}`));
             return;
         }
 
+        const rewardValue = this.getScaledProjectReward(projectData.baseReward);
         const newProject = {
             id: this.state.projects.length + 1,
             name: projectData.name,
@@ -429,118 +310,353 @@ class Game {
             requiredSkills: { ...projectData.requiredSkills },
             duration: projectData.duration,
             remainingDuration: projectData.duration,
-            reward: projectData.reward,
+            baseReward: projectData.baseReward,
+            currentReward: rewardValue,
             reputationGain: projectData.reputationGain,
             progress: 0,
-            skillPointsNeeded: projectData.requiredSkills.coding * projectData.duration, // Общее количество очков навыков для завершения
+            skillPointsNeeded: projectData.requiredSkills.coding * projectData.duration,
             currentSkillPoints: 0
         };
 
         this.state.projects.push(newProject);
-        this.print(`Проект '${projectName}' запущен!`, 'success');
-        this.refreshAllPanels(); // Обновляем все панели после запуска проекта
+        this.print(`Проект "${projectData.name}" запущен.`, 'success');
     }
 
-    cmdNextWeek(args) {
-        this.print('-- Началась неделя ' + ++this.state.currentWeek + ' --');
-
-        // 1. Выплата зарплат
-        let totalSalaries = this.state.employees.reduce((sum, emp) => sum + emp.salary, 0);
-        this.state.money -= totalSalaries;
-        if (totalSalaries > 0) {
-            this.print(`Выплачены зарплаты на сумму $${totalSalaries}.`, 'warning');
+    cmdNextWeek() {
+        if (this.state.gameOver) {
+            this.print('Игра завершена. Введите reset для перезапуска.', 'warning');
+            return;
         }
 
-        // 2. Прогресс по проектам
+        this.state.currentWeek += 1;
+        this.print(`-- Начинается неделя ${this.state.currentWeek} --`);
+
+        const totalSalaries = this.state.employees.reduce((sum, emp) => sum + (emp.currentSalary || 0), 0);
+        if (totalSalaries > 0) {
+            this.state.money -= totalSalaries;
+            this.print(`Выплачено зарплат на $${this.formatMoney(totalSalaries)}.`, 'warning');
+        }
+
         const totalSkills = this.calculateTotalSkills();
-        this.state.projects.forEach(proj => {
-            if (proj.remainingDuration > 0) {
-                // Учитываем скиллы и продолжительность
-                const skillContribution = totalSkills.coding * 1 + totalSkills.bugfixing * 0.5; // Увеличенный вклад скиллов
-                proj.currentSkillPoints += skillContribution;
-
-                proj.progress = (proj.currentSkillPoints / proj.skillPointsNeeded) * 100;
-                if (proj.progress > 100) proj.progress = 100;
-
-                if (proj.progress >= 100) {
-                    proj.remainingDuration = 0; // Проект завершен
-                } else {
-                    proj.remainingDuration--;
-                }
-                this.print(`Прогресс по проекту '${proj.name}': ${proj.progress.toFixed(0)}%. Осталось недель: ${proj.remainingDuration}.`); //toFixed(0) для более чистого вывода
+        this.state.projects.forEach(project => {
+            if (project.remainingDuration <= 0) {
+                return;
             }
+            const skillContribution = (totalSkills.coding * 1) + (totalSkills.bugfixing * 0.5);
+            project.currentSkillPoints += skillContribution;
+            const ratio = project.skillPointsNeeded > 0 ? project.currentSkillPoints / project.skillPointsNeeded : 1;
+            project.progress = Math.min(100, ratio * 100);
+            if (project.progress >= 100) {
+                project.remainingDuration = 0;
+            } else {
+                project.remainingDuration = Math.max(0, project.remainingDuration - 1);
+            }
+            this.print(
+                `Прогресс "${project.name}": ${project.progress.toFixed(0)}%, осталось ${project.remainingDuration} нед.`
+            );
         });
 
-        // 3. Завершение проектов
-        this.state.projects = this.state.projects.filter(proj => {
-            if (proj.remainingDuration <= 0 && proj.progress >= 100) {
-                this.state.money += proj.reward;
-                this.state.reputation += proj.reputationGain;
-                this.print(`Проект '${proj.name}' успешно завершен! Получено $${proj.reward} и +${proj.reputationGain} репутации.`, 'success');
-                return false; // Удаляем завершенный проект
+        this.state.projects = this.state.projects.filter(project => {
+            if (project.remainingDuration <= 0 && project.progress >= 100) {
+                const rewardValue = project.currentReward || project.baseReward || 0;
+                this.state.money += rewardValue;
+                this.state.reputation += project.reputationGain;
+                this.print(
+                    `Проект "${project.name}" завершён! Получено $${this.formatMoney(rewardValue)} и +${project.reputationGain} репутации.`,
+                    'success'
+                );
+                return false;
             }
             return true;
         });
 
-        // 4. Случайные события (с небольшой вероятностью)
-        let eventChance = 0.3;
-        eventChance += (this.state.reputation / 100) * 0.2;
-
-        if (Math.random() < eventChance) {
-            const randomEvent = GAME_DATA.events[Math.floor(Math.random() * GAME_DATA.events.length)];
-
-            if (this.state.reputation > 40 && randomEvent.type === 'negative' && Math.random() < 0.5) {
-                this.print(`Событие: "${randomEvent.message}" удалось предотвратить благодаря высокой репутации!`, 'info');
-            } else if (this.state.reputation < 20 && randomEvent.type === 'positive' && Math.random() < 0.5) {
-                this.print(`Событие: "${randomEvent.message}" не принесло эффекта из-за низкой репутации.`, 'info');
-                this.print(`СОБЫТИЕ: ${randomEvent.message}`, randomEvent.type === 'positive' ? 'success' : 'error');
-                if (randomEvent.moneyChange) this.state.money += randomEvent.moneyChange;
-                if (randomEvent.reputationChange) this.state.reputation += randomEvent.reputationChange;
-            }
-        }
-
-        // 5. Проверка условий поражения
-        if (this.state.money < 0) {
-            this.print('Банкротство! У вас закончились деньги.', 'error');
-            this.state.gameOver = true;
-            this.print('Игра окончена. Нажмите F5 для новой игры или наберите \'reset\' чтобы начать заново.');
-        }
-        if (this.state.reputation < 0) {
-            this.print('Репутация уничтожена! Ваша компания закрывается.', 'error');
-            this.state.gameOver = true;
-            this.print('Игра окончена. Нажмите F5 для новой игры или наберите \'reset\' чтобы начать заново.');
-        }
-
-        // Проверка условий победы
-        const WIN_MONEY = 50000;
-        const WIN_REPUTATION = 100;
-        if (this.state.money >= WIN_MONEY && this.state.reputation >= WIN_REPUTATION) {
-            this.print(`ПОБЕДА! Ваша компания достигла $${WIN_MONEY} и ${WIN_REPUTATION} репутации!`, 'success');
-            this.state.gameOver = true;
-            this.print('Игра окончена. Нажмите F5 для новой игры или наберите \'reset\' чтобы начать заново.', 'success');
-        }
-
-        // Обновляем общий статус после всех событий
-        // this.print(`Неделя: ${this.state.currentWeek} | Деньги: $${this.state.money} | Репутация: ${this.state.reputation}`); // Удаляем, т.к. теперь в панели
-        if (this.state.gameOver) {
-            terminalInput.disabled = true; // Отключаем ввод команд
-            gameControls.classList.add('disabled');
-        } else {
-            gameControls.classList.remove('disabled');
-        }
-        this.refreshAllPanels(); // Обновляем все панели в конце недели
+        this.processRandomEvent();
+        this.evaluateWinLose();
     }
 
     cmdReset() {
-        terminalOutput.innerHTML = ''; // Очищаем терминал
+        terminalOutput.innerHTML = '';
         if (hasLocalStorage()) {
             window.localStorage.removeItem(SAVE_KEY);
         }
-        this.state = cloneInitialState(); // Сбрасываем состояние игры
-        this.state.gameOver = false;
-        terminalInput.disabled = false; // Включаем ввод
-        gameControls.classList.remove('disabled'); // Включаем кнопки управления
-        this.init(); // Инициализируем игру заново
+        this.state = cloneInitialState();
+        this.ensureStateShape();
+        this.init();
+    }
+
+    processRandomEvent() {
+        const chance = 0.3 + (this.state.reputation / 100) * 0.2;
+        if (Math.random() >= chance) {
+            return;
+        }
+
+        const event = GAME_DATA.events[Math.floor(Math.random() * GAME_DATA.events.length)];
+        if (this.state.reputation > 40 && event.type === 'negative' && Math.random() < 0.5) {
+            this.print(`Благодаря репутации удалось избежать события: "${event.message}".`, 'info');
+            return;
+        }
+
+        if (this.state.reputation < 20 && event.type === 'positive' && Math.random() < 0.5) {
+            this.print(`Низкая репутация не позволила получить бонус: "${event.message}".`, 'warning');
+            return;
+        }
+
+        this.print(`Событие: ${event.message}`, event.type === 'positive' ? 'success' : 'warning');
+        if (event.moneyChange) {
+            this.state.money += event.moneyChange;
+        }
+        if (event.reputationChange) {
+            this.state.reputation += event.reputationChange;
+        }
+    }
+
+    evaluateWinLose() {
+        if (this.state.money < 0) {
+            this.print('Компания обанкротилась. Денег нет.', 'error');
+            this.state.gameOver = true;
+        } else if (this.state.reputation < 0) {
+            this.print('Репутация уничтожена — клиенты ушли.', 'error');
+            this.state.gameOver = true;
+        }
+
+        const WIN_MONEY = 50000;
+        const WIN_REPUTATION = 100;
+        if (!this.state.gameOver && this.state.money >= WIN_MONEY && this.state.reputation >= WIN_REPUTATION) {
+            this.print(`Победа! На счету $${this.formatMoney(this.state.money)} и ${this.state.reputation} репутации.`, 'success');
+            this.state.gameOver = true;
+        }
+
+        if (this.state.gameOver) {
+            this.print('Игра завершена. Введите reset или обновите страницу.', 'info');
+        }
+        this.refreshAllPanels();
+    }
+
+    calculateTotalSkills() {
+        const totals = { coding: 0, bugfixing: 0 };
+        this.state.employees.forEach(emp => {
+            totals.coding += emp.skills.coding;
+            totals.bugfixing += emp.skills.bugfixing;
+        });
+        return totals;
+    }
+
+    renderGameStats() {
+        statWeek.textContent = this.state.currentWeek;
+        statMoney.textContent = this.formatMoney(this.state.money);
+        statReputation.textContent = this.state.reputation;
+    }
+
+    renderHiredEmployees() {
+        hiredEmployeesList.innerHTML = '';
+        if (this.state.employees.length === 0) {
+            hiredEmployeesList.innerHTML = '<p class="empty-placeholder">Ещё никто не нанят.</p>';
+            return;
+        }
+
+        const emojiMap = {
+            'junior-dev': '👶💻',
+            'mid-dev': '🧑‍💻',
+            'senior-dev': '🧙‍💻'
+        };
+
+        this.state.employees.forEach(emp => {
+            const container = document.createElement('div');
+            container.classList.add('employee-item');
+
+            const removeBtn = document.createElement('button');
+            removeBtn.classList.add('fire-employee-trigger');
+            removeBtn.innerHTML = '&times;';
+            removeBtn.setAttribute('aria-label', `Уволить ${emp.name}`);
+            removeBtn.addEventListener('click', event => {
+                event.stopPropagation();
+                this.openFireModal(emp);
+            });
+
+            const emojiSpan = document.createElement('span');
+            emojiSpan.classList.add('emoji');
+            emojiSpan.textContent = emojiMap[emp.type] || '👤';
+
+            const infoBlock = document.createElement('div');
+            infoBlock.classList.add('employee-info');
+            infoBlock.innerHTML = `
+                <div class="employee-name">${emp.name}</div>
+                <div class="employee-role">${emp.roleLabel}</div>
+                <div class="employee-salary">$${this.formatMoney(emp.currentSalary)}/нед</div>
+                <div class="employee-skills">Навыки: <br> Coding ${emp.skills.coding}, Bugfixing ${emp.skills.bugfixing}</div>
+            `;
+
+            const actions = document.createElement('div');
+            actions.classList.add('employee-actions');
+            const statsBtn = document.createElement('button');
+            statsBtn.classList.add('employee-stats-btn');
+            statsBtn.textContent = 'Статистика';
+            statsBtn.type = 'button';
+            statsBtn.disabled = true;
+            statsBtn.title = 'Скоро появится модалка статистики';
+            actions.appendChild(statsBtn);
+
+            container.appendChild(removeBtn);
+            container.appendChild(emojiSpan);
+            container.appendChild(infoBlock);
+            container.appendChild(actions);
+            hiredEmployeesList.appendChild(container);
+        });
+    }
+
+    renderActiveProjects() {
+        activeProjectsList.innerHTML = '';
+        if (this.state.projects.length === 0) {
+            activeProjectsList.innerHTML = '<p class="empty-placeholder">Активных проектов нет.</p>';
+            return;
+        }
+
+        this.state.projects.forEach(project => {
+            const item = document.createElement('div');
+            item.classList.add('active-project-item');
+            item.innerHTML = `
+                <div class="project-name">${project.name}</div>
+                <div class="project-progress">Прогресс: ${project.progress.toFixed(0)}%</div>
+                <div class="project-eta">Осталось недель: ${Math.max(project.remainingDuration, 0)}</div>
+                <div class="project-reward">Награда: $${this.formatMoney(project.currentReward)}</div>
+            `;
+            activeProjectsList.appendChild(item);
+        });
+    }
+
+    renderHirePanel() {
+        hirePanel.innerHTML = '<h2>Нанять сотрудника</h2><div class="panel-content-scroll"></div>';
+        const panelContent = hirePanel.querySelector('.panel-content-scroll');
+
+        GAME_DATA.employeeTypes.forEach(type => {
+            const hireCost = this.getScaledEmployeeCost(type.baseCost);
+            const marketSalary = this.getScaledSalary(type.baseSalary);
+            const card = document.createElement('div');
+            card.classList.add('employee-card');
+
+            let disabled = false;
+            let reason = '';
+            if (this.state.money < hireCost) {
+                disabled = true;
+                reason = 'Недостаточно денег';
+            } else if (this.state.reputation < type.minReputation) {
+                disabled = true;
+                reason = `Нужна репутация ${type.minReputation}+`;
+            }
+
+            if (disabled) {
+                card.classList.add('disabled');
+            } else {
+                card.addEventListener('click', () => this.handleCommand(`hire ${type.type}`));
+            }
+
+            card.innerHTML = `
+                <div class="employee-card-header">
+                    <h3>${type.label}</h3>
+                    <span class="employee-type-tag">${type.type}</span>
+                </div>
+                <p>Стоимость найма: $${this.formatMoney(hireCost)}</p>
+                <p>Рыночная зарплата: $${this.formatMoney(marketSalary)}/нед</p>
+                <p class="skills">Навыки: Coding ${type.skills.coding}, Bugfixing ${type.skills.bugfixing}</p>
+                ${disabled ? `<p class="error">${reason}</p>` : ''}
+            `;
+
+            panelContent.appendChild(card);
+        });
+    }
+
+    renderProjectsPanel() {
+        projectsPanel.innerHTML = '<h2>Доступные проекты</h2><div class="projects-grid"></div>';
+        const grid = projectsPanel.querySelector('.projects-grid');
+        const totalSkills = this.calculateTotalSkills();
+
+        GAME_DATA.projectTypes.forEach(projectType => {
+            const rewardValue = this.getScaledProjectReward(projectType.baseReward);
+            const card = document.createElement('div');
+            card.classList.add('project-card', `${projectType.size}-project`);
+
+            let disabled = false;
+            let reason = '';
+            const missing = [];
+
+            if (this.state.projects.some(project => project.name === projectType.name)) {
+                disabled = true;
+                reason = 'Проект уже выполняется';
+            }
+
+            if (!disabled && this.state.reputation < projectType.minReputation) {
+                disabled = true;
+                reason = `Нужна репутация ${projectType.minReputation}+`;
+            }
+
+            Object.keys(projectType.requiredSkills).forEach(skill => {
+                if (totalSkills[skill] < projectType.requiredSkills[skill]) {
+                    disabled = true;
+                    missing.push(`${skill}: нужно ${projectType.requiredSkills[skill]}, есть ${totalSkills[skill]}`);
+                }
+            });
+
+            if (disabled) {
+                card.classList.add('disabled');
+            } else {
+                card.addEventListener('click', () => this.handleCommand(`project ${projectType.name}`));
+            }
+
+            card.innerHTML = `
+                <div class="project-icon">${projectType.icon}</div>
+                <h3>${projectType.name}</h3>
+                <p>${projectType.description}</p>
+                <p class="skills-req">Навыки: <br> Coding ${projectType.requiredSkills.coding}, Bugfixing ${projectType.requiredSkills.bugfixing}</p>
+                <p>Длительность: ${projectType.duration} нед.</p>
+                <p>Награда: $${this.formatMoney(rewardValue)}, репутация: +${projectType.reputationGain}</p>
+                ${reason ? `<p class="error">${reason}</p>` : ''}
+                ${missing.length && !reason ? `<p class="error">Недостаёт: ${missing.join(', ')}</p>` : ''}
+            `;
+
+            grid.appendChild(card);
+        });
+    }
+
+    refreshAllPanels() {
+        this.renderGameStats();
+        this.renderHiredEmployees();
+        this.renderActiveProjects();
+        this.renderHirePanel();
+        this.renderProjectsPanel();
+        this.updateControlsState();
+        this.persistState();
+    }
+
+    getEconomy() {
+        return this.state.economy || DEFAULT_ECONOMY;
+    }
+
+    getScaledSalary(baseSalary) {
+        return Math.round(baseSalary * (this.getEconomy().salaryScale || 1));
+    }
+
+    getScaledEmployeeCost(baseCost) {
+        return Math.round(baseCost * (this.getEconomy().salaryScale || 1));
+    }
+
+    getScaledProjectReward(baseReward) {
+        return Math.round(baseReward * (this.getEconomy().projectScale || 1));
+    }
+
+    appendLogEntry(message, type = 'info', { store = true } = {}) {
+        const line = document.createElement('div');
+        line.textContent = message;
+        line.classList.add(type);
+        terminalOutput.appendChild(line);
+        terminalOutput.scrollTop = terminalOutput.scrollHeight;
+
+        if (store) {
+            this.state.log.push({ message, type });
+            if (this.state.log.length > LOG_LIMIT) {
+                this.state.log.splice(0, this.state.log.length - LOG_LIMIT);
+            }
+            this.persistState();
+        }
     }
 
     restoreLog() {
@@ -554,40 +670,32 @@ class Game {
         return true;
     }
 
-    appendLogEntry(message, type = 'info', { store = true } = {}) {
-        const line = document.createElement('div');
-        line.textContent = message;
-        line.classList.add(type);
-        terminalOutput.appendChild(line);
-        terminalOutput.scrollTop = terminalOutput.scrollHeight;
-
-        if (store) {
-            if (!Array.isArray(this.state.log)) {
-                this.state.log = [];
-            }
-            this.state.log.push({ message, type });
-            if (this.state.log.length > LOG_LIMIT) {
-                this.state.log.splice(0, this.state.log.length - LOG_LIMIT);
-            }
-            this.persistState();
-        }
-    }
-
     persistState() {
-        if (!this.state) {
-            return;
-        }
         saveState(this.state);
     }
 
+    formatMoney(value) {
+        return Number(value || 0).toLocaleString('ru-RU');
+    }
+
+    updateControlsState() {
+        if (this.state.gameOver) {
+            terminalInput.disabled = true;
+            gameControls.classList.add('disabled');
+        } else {
+            terminalInput.disabled = false;
+            gameControls.classList.remove('disabled');
+        }
+    }
+
     fireEmployeeById(employeeId) {
-        const employeeIndex = this.state.employees.findIndex(emp => emp.id === employeeId);
-        if (employeeIndex === -1) {
-            this.print(`Сотрудник с ID ${employeeId} не найден.`);
+        const index = this.state.employees.findIndex(emp => emp.id === employeeId);
+        if (index === -1) {
+            this.print(`Сотрудник с ID ${employeeId} не найден.`, 'error');
             return false;
         }
-        const firedEmployee = this.state.employees.splice(employeeIndex, 1)[0];
-        this.print(`Сотрудник ${firedEmployee.name} (${firedEmployee.type}) был уволен.`, 'warning');
+        const [fired] = this.state.employees.splice(index, 1);
+        this.print(`Сотрудник ${fired.name} (${fired.roleLabel}) уволен.`, 'warning');
         this.refreshAllPanels();
         return true;
     }
@@ -595,7 +703,7 @@ class Game {
     openFireModal(employee) {
         this.employeeIdPendingFire = employee.id;
         fireConfirmName.textContent = employee.name;
-        fireConfirmRole.textContent = employee.type;
+        fireConfirmRole.textContent = employee.roleLabel;
         fireConfirmModal.classList.add('visible');
         fireConfirmModal.setAttribute('aria-hidden', 'false');
     }
@@ -607,53 +715,29 @@ class Game {
     }
 }
 
-
 const game = new Game();
 
-terminalInput.addEventListener('keydown', (event) => {
+terminalInput.addEventListener('keydown', event => {
     if (event.key === 'Enter') {
-        const input = terminalInput.value;
+        const command = terminalInput.value;
         terminalInput.value = '';
-        game.handleCommand(input);
+        game.handleCommand(command);
     }
 });
 
 document.addEventListener('DOMContentLoaded', () => {
     game.init();
 
-    const controlButtons = document.querySelectorAll('.control-btn');
-    controlButtons.forEach(button => {
+    document.querySelectorAll('.control-btn').forEach(button => {
         button.addEventListener('click', () => {
             const command = button.dataset.command;
-
-            // Удаляем логику для 'toggle-terminal', так как терминал всегда видим
-            // if (command === 'toggle-terminal') { ... return; }
-
-            if (!game.state.gameOver || command === 'reset') {
-                game.handleCommand(command);
-            } else {
-                game.print('Игра окончена. Используйте reset для начала заново.');
-            }
-            // Удаляем автоматический фокус на вводе после нажатия кнопки
-            // terminalInput.focus();
+            game.handleCommand(command);
         });
     });
 
-    // Начальная настройка: терминал всегда видим, ввод включен
-    terminalInput.disabled = false;
-
-    // Ensure hire and projects panels stay visible
-    hirePanel.classList.remove('hidden');
-    projectsPanel.classList.remove('hidden');
-
-    game.refreshAllPanels();
-
     const pageLoader = document.getElementById('page-loader');
     if (pageLoader) {
-        // Небольшая задержка, чтобы анимация лоадера была видна
-        setTimeout(() => {
-            pageLoader.classList.add('fade-out');
-        }, 500); // 0.5 секунды
+        setTimeout(() => pageLoader.classList.add('fade-out'), 500);
     }
 });
 
@@ -666,15 +750,14 @@ confirmFireBtn.addEventListener('click', () => {
 
 cancelFireBtn.addEventListener('click', () => game.closeFireModal());
 
-fireConfirmModal.addEventListener('click', (event) => {
+fireConfirmModal.addEventListener('click', event => {
     if (event.target === fireConfirmModal) {
         game.closeFireModal();
     }
 });
 
-document.addEventListener('keydown', (event) => {
+document.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
         game.closeFireModal();
     }
 });
-
