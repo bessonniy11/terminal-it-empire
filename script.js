@@ -41,8 +41,10 @@ const EMPLOYEE_EVENT_LIMIT = 30;
 const DEFAULT_ECONOMY = Object.freeze({
     salaryScale: 1,
     projectScale: 1,
-    inflationInterval: 10
+    inflationInterval: 10,
+    weeksUntilInflation: 10
 });
+const INFLATION_RATE = 0.05;
 
 const EMPLOYEE_POSITIVE_EVENTS = [
     { message: 'нашёл узкое место и ускорил билд', moneyChange: 600, reputationChange: 2 },
@@ -86,12 +88,35 @@ const WARNING_SOURCES = [
     'Узнали по внутреннему опросу',
     'Заметили пассивно-агрессивный статус в Slack',
     'Наткнулись на резюме в LinkedIn',
-    'HR сказал "нам нужно поговорить"',
+    'HR сказал \"нам нужно поговорить\"',
     'Нашли записку на холодильнике в офисе',
-    'Получили письмо с темой "не хочу, но надо"',
+    'Получили письмо с темой \"не хочу, но надо\"',
     'Сотрудник шепнул DevOps-у, а тот — всем',
     'На ретроспективе внезапно стало тихо',
     'Сотрудник спросил, где тут выход без ключ-карты'
+];
+
+const UNDERPERFORMER_STATUSES = [
+    'Чувствую себя ничтожеством',
+    'Меня, наверное, скоро уволят',
+    'Спрятал резюме в ящике стола',
+    'Надеваю футболку «я случайно тут»',
+    'Если меня ищут — я в углу и паникую',
+    'Каждый коммит — как признание вины',
+    'Главное, чтобы никто не заметил, что я всё ещё здесь',
+    'Пишу код и завещание одновременно',
+    'Держусь за стул, потому что больше не за что',
+    'Сегодня снова не уволили. Удивительно',
+    'Надеюсь, кофе прикроет мои косяки',
+    'Делаю вид, что понимаю происходящее',
+    'Смотрю на тимлида, как на приговор',
+    'Каждый баг — как письмо самому себе',
+    'Я тут просто стажёр… уже третий год',
+    'Моя цель — не быть худшим сегодня',
+    'ЕСЛИ Я УЙДУ, КТО ЖЕ БУДЕТ ВСЁ ЛОМАТЬ?',
+    'Подумываю открыть бизнес по извинениям',
+    'Секретный план: стать незаметным',
+    'Похоже, я снова ближайший кандидат на увольнение'
 ];
 
 const SATISFACTION_DESCRIPTIONS = [
@@ -104,8 +129,9 @@ const SATISFACTION_DESCRIPTIONS = [
     { min: -20, text: 'ищет EXIT в каждом спринт-борде' },
     { min: -40, text: 'напечатал заявление и ищет принтер' },
     { min: -70, text: 'строит побег, пакует тикеты с собой' },
-    { min: -101, text: 'написал "пока" в README' }
+    { min: -101, text: 'написал «пока» в README' }
 ];
+
 
 
 const DEPARTURE_REASONS = {
@@ -236,6 +262,7 @@ function cloneInitialState() {
         clone.lastEmployeeId = 0;
     }
     clone.economy = { ...DEFAULT_ECONOMY, ...(clone.economy || {}) };
+    clone.economy.weeksUntilInflation = clone.economy.weeksUntilInflation ?? clone.economy.inflationInterval;
     return clone;
 }
 
@@ -259,6 +286,7 @@ function loadState() {
         const merged = { ...fallback, ...parsed };
         merged.log = Array.isArray(merged.log) ? merged.log : [];
         merged.economy = { ...DEFAULT_ECONOMY, ...(merged.economy || {}) };
+        merged.economy.weeksUntilInflation = merged.economy.weeksUntilInflation ?? merged.economy.inflationInterval;
         merged.lastEmployeeId = typeof merged.lastEmployeeId === 'number' ? merged.lastEmployeeId : 0;
         return merged;
     } catch (error) {
@@ -345,20 +373,32 @@ class Game {
     }
 
     generateBehaviorProfile(type) {
-        const base = { positive: 0.35, negative: 0.2 };
-        if (type === 'junior-dev') {
-            base.positive = 0.3;
-            base.negative = 0.3;
-        } else if (type === 'senior-dev') {
-            base.positive = 0.45;
-            base.negative = 0.15;
-        }
-        const positive = Math.min(0.8, Math.max(0.1, base.positive + (Math.random() - 0.5) * 0.2));
-        const negative = Math.min(0.6, Math.max(0.05, base.negative + (Math.random() - 0.5) * 0.15));
-        return {
-            positiveBias: positive,
-            negativeBias: negative
+        const profile = {
+            positiveBias: 0.35,
+            negativeBias: 0.2,
+            learningRate: 0.01 + Math.random() * 0.02,
+            lowExpectations: false
         };
+        if (type === 'junior-dev') {
+            const chaotic = Math.random() < 0.5;
+            if (chaotic) {
+                profile.positiveBias = 0.25 + Math.random() * 0.05;
+                profile.negativeBias = 0.35 + Math.random() * 0.15;
+                profile.lowExpectations = true;
+            } else {
+                profile.positiveBias = 0.45 + Math.random() * 0.15;
+                profile.negativeBias = 0.15 + Math.random() * 0.1;
+            }
+        } else if (type === 'mid-dev') {
+            profile.positiveBias = 0.4 + (Math.random() - 0.5) * 0.15;
+            profile.negativeBias = 0.2 + (Math.random() - 0.5) * 0.1;
+        } else if (type === 'senior-dev') {
+            profile.positiveBias = 0.5 + Math.random() * 0.1;
+            profile.negativeBias = 0.12 + Math.random() * 0.08;
+        }
+        profile.positiveBias = Math.min(0.85, Math.max(0.1, profile.positiveBias));
+        profile.negativeBias = Math.min(0.6, Math.max(0.05, profile.negativeBias));
+        return profile;
     }
 
     pickRandom(array) {
@@ -395,8 +435,11 @@ class Game {
         return this.pickRandom(DEPARTURE_REASONS.neutral);
     }
 
-    describeMood(moodScore) {
+    describeMood(moodScore, employee = null) {
         const mood = Number(moodScore || 0);
+        if (employee?.behaviorProfile?.lowExpectations && mood < 30) {
+            return `${this.pickRandom(UNDERPERFORMER_STATUSES)} (${mood.toFixed(0)})`;
+        }
         for (const state of SATISFACTION_DESCRIPTIONS) {
             if (mood >= state.min) {
                 return `${state.text} (${mood.toFixed(0)})`;
@@ -652,6 +695,7 @@ class Game {
         this.processEmployeeEvents();
         this.processGlobalEvent();
         this.evaluateWinLose();
+        this.tickInflation();
         this.refreshAllPanels();
     }
 
@@ -671,11 +715,13 @@ class Game {
             if (!event) {
                 this.updateEmployeeMood(employee, null);
                 this.evaluateEmployeeRetention(employee);
+                this.improveBehaviorProfile(employee);
                 return;
             }
             this.applyEmployeeEvent(employee, event);
             this.updateEmployeeMood(employee, event);
             this.evaluateEmployeeRetention(employee);
+            this.improveBehaviorProfile(employee);
         });
     }
 
@@ -729,6 +775,15 @@ class Game {
         this.print(`[${employee.name}] ${event.message}${suffix}`, tone);
     }
 
+    improveBehaviorProfile(employee) {
+        const profile = employee.behaviorProfile;
+        if (!profile || !profile.learningRate) {
+            return;
+        }
+        profile.negativeBias = Math.max(0.05, profile.negativeBias - profile.learningRate);
+        profile.positiveBias = Math.min(0.85, profile.positiveBias + profile.learningRate * 0.5);
+    }
+
     recordEmployeeEvent(employee, entry) {
         employee.eventLog = Array.isArray(employee.eventLog) ? employee.eventLog : [];
         employee.eventLog.push(entry);
@@ -764,6 +819,11 @@ class Game {
 
     evaluateEmployeeRetention(employee) {
         const mood = employee.moodScore || 0;
+        const profile = employee.behaviorProfile || this.generateBehaviorProfile(employee.type);
+        const warningMoodThreshold = profile.lowExpectations ? -70 : -40;
+        const warningChance = profile.lowExpectations ? 0.25 : 0.7;
+        const suddenMoodThreshold = profile.lowExpectations ? -90 : -70;
+        const suddenChance = profile.lowExpectations ? 0.05 : 0.3;
         if (employee.pendingDeparture) {
             employee.pendingDeparture.weeks += 1;
             if (employee.pendingDeparture.weeks >= employee.pendingDeparture.timeout) {
@@ -779,18 +839,18 @@ class Game {
                 this.print(`[${employee.name}] успокоился и остался в команде.`, 'info');
                 employee.warning = null;
                 employee.weeksSinceWarning = 0;
-            } else if (employee.weeksSinceWarning >= 3) {
+            } else if (employee.weeksSinceWarning >= (profile.lowExpectations ? 4 : 3)) {
                 if (!employee.pendingDeparture) {
-                    employee.pendingDeparture = { weeks: 0, timeout: 2, reason: 'Предупреждение игнорировалось.' };
+                    employee.pendingDeparture = { weeks: 0, timeout: profile.lowExpectations ? 3 : 2, reason: 'Предупреждение игнорировалось.' };
                     this.print(`[${employee.name}] готовится к уходу, осталось мало времени.`, 'warning');
                 }
             }
         }
 
-        if (mood < -40 && !employee.warning && Math.random() < 0.7) {
+        if (mood < warningMoodThreshold && !employee.warning && Math.random() < warningChance) {
             this.issueWarning(employee);
-        } else if (mood < -70 && Math.random() < 0.3) {
-            this.forceEmployeeDeparture(employee, 'Сотрудник внезапно ушёл (предложение от другой компании).', true);
+        } else if (mood < suddenMoodThreshold && Math.random() < suddenChance) {
+            this.forceEmployeeDeparture(employee, 'Получил внезапный оффер и исчез', true);
         }
     }
 
@@ -862,6 +922,24 @@ class Game {
         }
     }
 
+    tickInflation() {
+        const econ = this.state.economy;
+        if (!econ || !econ.inflationInterval) {
+            return;
+        }
+        econ.weeksUntilInflation = (econ.weeksUntilInflation ?? econ.inflationInterval) - 1;
+        if (econ.weeksUntilInflation > 0) {
+            return;
+        }
+        econ.weeksUntilInflation = econ.inflationInterval;
+        econ.salaryScale = +(econ.salaryScale * (1 + INFLATION_RATE)).toFixed(4);
+        econ.projectScale = +(econ.projectScale * (1 + INFLATION_RATE)).toFixed(4);
+        this.state.employees.forEach(emp => {
+            emp.marketSalary = Math.round(emp.baseSalary * econ.salaryScale);
+        });
+        this.print(`Инфляция: рынок вырос на ${(INFLATION_RATE * 100).toFixed(0)}%. Рыночные зарплаты и награды проектов увеличились.`, 'info');
+    }
+
     evaluateWinLose() {
         if (this.state.money < 0) {
             this.print('Компания обанкротилась. Денег нет.', 'error');
@@ -871,8 +949,8 @@ class Game {
             this.state.gameOver = true;
         }
 
-        const WIN_MONEY = 50000;
-        const WIN_REPUTATION = 100;
+        const WIN_MONEY = 1000000;
+        const WIN_REPUTATION = 5000;
         if (!this.state.gameOver && this.state.money >= WIN_MONEY && this.state.reputation >= WIN_REPUTATION) {
             this.print(`Победа! На счету $${this.formatMoney(this.state.money)} и ${this.state.reputation} репутации.`, 'success');
             this.state.gameOver = true;
@@ -1087,7 +1165,7 @@ class Game {
         employeeModalCurrentSalary.textContent = this.formatMoney(employee.currentSalary);
         employeeModalMarketSalary.textContent = this.formatMoney(employee.marketSalary);
         employeeSalaryInput.value = employee.currentSalary;
-        employeeModalMood.textContent = this.describeMood(employee.moodScore || 0);
+        employeeModalMood.textContent = this.describeMood(employee.moodScore || 0, employee);
         if (employee.warning) {
             employeeModalWarning.textContent = `Есть предупреждение: ${employee.warning.source}`;
             employeeModalWarning.classList.add('warning-active');
@@ -1151,7 +1229,7 @@ class Game {
             card.innerHTML = `
                 <div class="global-stats-header">
                     <strong>${emp.name}</strong>
-                    <span class="mood-chip ${this.getMoodClass(mood)}">${this.describeMood(mood)}</span>
+                    <span class="mood-chip ${this.getMoodClass(mood)}">${this.describeMood(mood, emp)}</span>
                 </div>
                 <div class="global-stats-footer">
                     <span>Роль: ${emp.roleLabel}</span>

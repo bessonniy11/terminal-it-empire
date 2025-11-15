@@ -4,7 +4,7 @@
 }
 :root {
     --header-height: 60px; /* РџСЂРёРјРµСЂРЅР°СЏ РІС‹СЃРѕС‚Р° С…РµРґРµСЂР° */
-    --info-block-height: 220px; /* РЈРІРµР»РёС‡РµРЅР° РІС‹СЃРѕС‚Р° info-block */
+    --info-block-height: 320px; /* РЈРІРµР»РёС‡РµРЅР° РІС‹СЃРѕС‚Р° info-block */
     --game-layout-max-width: 1400px;
     --gap-between-sections: 20px;
     --terminal-width: 400px;
