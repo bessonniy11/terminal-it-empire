@@ -359,6 +359,7 @@ class Game {
             employee.weeksInRole = typeof employee.weeksInRole === 'number' ? employee.weeksInRole : 0;
             employee.promotionRequest = employee.promotionRequest || null;
             employee.promotionWarning = employee.promotionWarning || null;
+            employee.performanceScore = typeof employee.performanceScore === 'number' ? employee.performanceScore : 0;
             if (!employee.roleLabel) {
                 const typeRef = GAME_DATA.employeeTypes.find(type => type.type === employee.type);
                 employee.roleLabel = typeRef ? typeRef.label : employee.type;
@@ -501,9 +502,10 @@ class Game {
             moneyChange: 0,
             reputationChange: 0
         });
-        this.print(`[${employee.name}] повышен до ${targetData.label}.`, 'success');
+        const label = this.formatEmployeeLabel(employee);
+        this.print(`[${label}] повышен до ${targetData.label}.`, 'success');
         this.showNotification({
-            title: `${employee.name} повышен`,
+            title: `${label} повышен`,
             message: `Новая роль — ${targetData.label}`,
             tone: 'success'
         });
@@ -572,7 +574,7 @@ class Game {
         } else {
             this.state.employees.forEach(emp => {
                 this.print(
-                    `  - ${emp.name} (${emp.roleLabel}), зарплата $${this.formatMoney(emp.currentSalary)}; ` +
+                    `  - ${this.formatEmployeeLabel(emp)} (${emp.roleLabel}), зарплата $${this.formatMoney(emp.currentSalary)}; ` +
                     `навыки Coding ${emp.skills.coding}, Bugfixing ${emp.skills.bugfixing}`
                 );
             });
@@ -634,12 +636,13 @@ class Game {
             lastSalaryChangeWeek: this.state.currentWeek,
             weeksInRole: 0,
             promotionRequest: null,
-            promotionWarning: null
+            promotionWarning: null,
+            performanceScore: 0
         };
 
         this.state.money -= hireCost;
         this.state.employees.push(newEmployee);
-        this.print(`Нанят сотрудник ${newEmployee.name} (${newEmployee.roleLabel}).`, 'success');
+        this.print(`Нанят сотрудник ${this.formatEmployeeLabel(newEmployee)} (${newEmployee.roleLabel}).`, 'success');
     }
 
     cmdProject(args) {
@@ -752,6 +755,7 @@ class Game {
         });
 
         this.processEmployeeEvents();
+        this.ensureAmbitionPipeline();
         this.processGlobalEvent();
         this.evaluateWinLose();
         this.tickInflation();
@@ -772,6 +776,7 @@ class Game {
         this.state.employees.forEach(employee => {
             const event = this.createEmployeeEvent(employee);
             if (!event) {
+                this.updatePerformanceScore(employee, 'quiet');
                 this.updateEmployeeMood(employee, null);
                 this.evaluateEmployeeRetention(employee);
                 this.improveBehaviorProfile(employee);
@@ -833,7 +838,28 @@ class Game {
             deltas.push(`репутация ${event.reputationChange > 0 ? '+' : ''}${event.reputationChange}`);
         }
         const suffix = deltas.length ? ` (${deltas.join(', ')})` : '';
-        this.print(`[${employee.name}] ${event.message}${suffix}`, tone);
+        this.print(`[${this.formatEmployeeLabel(employee)}] ${event.message}${suffix}`, tone);
+        this.updatePerformanceScore(employee, event.type);
+    }
+
+    updatePerformanceScore(employee, eventType = null) {
+        if (!employee) {
+            return;
+        }
+        const clamp = value => Math.max(-20, Math.min(40, value));
+        const type = eventType || 'none';
+        const current = typeof employee.performanceScore === 'number' ? employee.performanceScore : 0;
+        let delta = 0;
+        if (type === 'positive') {
+            delta = 2.5;
+        } else if (type === 'neutral') {
+            delta = 1;
+        } else if (type === 'negative') {
+            delta = -3.5;
+        } else {
+            delta = 0.5;
+        }
+        employee.performanceScore = clamp(current + delta);
     }
 
     improveBehaviorProfile(employee) {
@@ -851,14 +877,27 @@ class Game {
         }
         employee.weeksInRole = (employee.weeksInRole || 0) + 1;
         const target = this.getPromotionTarget(employee.type);
-        if (!target || !employee.behaviorProfile?.growth) {
+        const profile = employee.behaviorProfile || (employee.behaviorProfile = this.generateBehaviorProfile(employee.type));
+        const performanceScore = typeof employee.performanceScore === 'number' ? employee.performanceScore : 0;
+        if (!target) {
+            employee.promotionRequest = null;
+            employee.promotionWarning = null;
+            return;
+        }
+        if (!profile.growth) {
+            employee.promotionRequest = null;
+            employee.promotionWarning = null;
+            return;
+        }
+        if (performanceScore < 3) {
+            profile.growth = false;
             employee.promotionRequest = null;
             employee.promotionWarning = null;
             return;
         }
 
         if (!employee.promotionRequest) {
-            if (employee.weeksInRole >= 12 && (employee.moodScore || 0) > 25) {
+            if (employee.weeksInRole >= 12 && (employee.moodScore || 0) > 25 && performanceScore >= 6) {
                 this.createPromotionRequest(employee, target);
             }
             return;
@@ -875,6 +914,43 @@ class Game {
         }
     }
 
+    ensureAmbitionPipeline() {
+        const employees = this.state.employees.filter(emp => emp.type !== 'senior-dev');
+        if (employees.length === 0) {
+            return;
+        }
+        const desired = Math.max(1, Math.floor(employees.length * 0.25));
+        employees.forEach(emp => {
+            const profile = emp.behaviorProfile;
+            if (profile && profile.growth && (emp.performanceScore || 0) < 2) {
+                profile.growth = false;
+                emp.promotionRequest = null;
+                emp.promotionWarning = null;
+            }
+        });
+        let current = employees.filter(emp => emp.behaviorProfile?.growth).length;
+        if (current >= desired) {
+            return;
+        }
+        const eligible = employees.filter(emp => {
+            const profile = emp.behaviorProfile || this.generateBehaviorProfile(emp.type);
+            if (profile.lowExpectations || profile.growth) {
+                return false;
+            }
+            return (emp.performanceScore || 0) >= 6;
+        });
+        while (current < desired && eligible.length > 0) {
+            const index = Math.floor(Math.random() * eligible.length);
+            const picked = eligible.splice(index, 1)[0];
+            if (!picked) {
+                break;
+            }
+            picked.behaviorProfile = picked.behaviorProfile || this.generateBehaviorProfile(picked.type);
+            picked.behaviorProfile.growth = true;
+            current += 1;
+        }
+    }
+
     createPromotionRequest(employee, target) {
         employee.promotionRequest = {
             targetType: target.type,
@@ -882,7 +958,8 @@ class Game {
             weeksWaiting: 0,
             warningIssued: false
         };
-        const message = `${employee.name} считает, что готов стать ${target.label}.`;
+        const label = this.formatEmployeeLabel(employee);
+        const message = `${label} считает, что готов стать ${target.label}.`;
         this.recordEmployeeEvent(employee, {
             week: this.state.currentWeek,
             type: 'system',
@@ -892,7 +969,7 @@ class Game {
         });
         this.print(message, 'info');
         this.showNotification({
-            title: `${employee.name} хочет роста`,
+            title: `${label} хочет роста`,
             message: `Хочет стать ${target.label}`,
             tone: 'info'
         });
@@ -903,7 +980,8 @@ class Game {
             return;
         }
         employee.promotionRequest.warningIssued = true;
-        const msg = `${employee.name} недоволен отсутствием повышения до ${employee.promotionRequest.targetLabel}.`;
+        const label = this.formatEmployeeLabel(employee);
+        const msg = `${label} недоволен отсутствием повышения до ${employee.promotionRequest.targetLabel}.`;
         employee.promotionWarning = msg;
         this.recordEmployeeEvent(employee, {
             week: this.state.currentWeek,
@@ -914,7 +992,7 @@ class Game {
         });
         this.print(msg, 'warning');
         this.showNotification({
-            title: `${employee.name} ждёт решения`,
+            title: `${label} ждёт решения`,
             message: `Нужно повысить до ${employee.promotionRequest.targetLabel}`,
             tone: 'warning'
         });
@@ -988,13 +1066,13 @@ class Game {
         if (employee.warning) {
             employee.weeksSinceWarning += 1;
             if (mood > 10) {
-                this.print(`[${employee.name}] успокоился и остался в команде.`, 'info');
+                this.print(`[${this.formatEmployeeLabel(employee)}] успокоился и остался в команде.`, 'info');
                 employee.warning = null;
                 employee.weeksSinceWarning = 0;
             } else if (employee.weeksSinceWarning >= (profile.lowExpectations ? 4 : 3)) {
                 if (!employee.pendingDeparture) {
                     employee.pendingDeparture = { weeks: 0, timeout: profile.lowExpectations ? 3 : 2, reason: 'Предупреждение игнорировалось.' };
-                    this.print(`[${employee.name}] готовится к уходу, осталось мало времени.`, 'warning');
+                    this.print(`[${this.formatEmployeeLabel(employee)}] готовится к уходу, осталось мало времени.`, 'warning');
                 }
             }
         }
@@ -1019,9 +1097,9 @@ class Game {
             moneyChange: 0,
             reputationChange: 0
         });
-        this.print(`[${employee.name}] сигнализирует о желании уволиться (${employee.warning.source}).`, 'warning');
+        this.print(`[${this.formatEmployeeLabel(employee)}] сигнализирует о желании уволиться (${employee.warning.source}).`, 'warning');
         this.showNotification({
-            title: `${employee.name} недоволен`,
+            title: `${this.formatEmployeeLabel(employee)} недоволен`,
             message: employee.warning.source,
             tone: 'warning'
         });
@@ -1039,9 +1117,9 @@ class Game {
         if (sudden) {
             this.state.reputation = Math.max(0, this.state.reputation - 3);
         }
-        this.print(`[${employee.name}] уволился. Причина: ${finalReason}`, 'error');
+        this.print(`[${this.formatEmployeeLabel(employee)}] уволился. Причина: ${finalReason}`, 'error');
         this.showNotification({
-            title: `${employee.name} ушёл`,
+            title: `${this.formatEmployeeLabel(employee)} ушёл`,
             message: finalReason,
             tone: 'error'
         });
@@ -1142,13 +1220,14 @@ class Game {
         };
 
         this.state.employees.forEach(emp => {
+            const label = this.formatEmployeeLabel(emp);
             const container = document.createElement('div');
             container.classList.add('employee-item');
 
             const removeBtn = document.createElement('button');
             removeBtn.classList.add('fire-employee-trigger');
             removeBtn.innerHTML = '&times;';
-            removeBtn.setAttribute('aria-label', `Уволить ${emp.name}`);
+            removeBtn.setAttribute('aria-label', `Уволить ${label}`);
             removeBtn.addEventListener('click', event => {
                 event.stopPropagation();
                 this.openFireModal(emp);
@@ -1161,7 +1240,7 @@ class Game {
             const infoBlock = document.createElement('div');
             infoBlock.classList.add('employee-info');
             infoBlock.innerHTML = `
-                <div class="employee-name">${emp.name}</div>
+                <div class="employee-name">${label}</div>
                 <div class="employee-role">${emp.roleLabel}</div>
                 <div class="employee-salary">$${this.formatMoney(emp.currentSalary)}/нед</div>
                 <div class="employee-skills">Навыки: <br> Coding ${emp.skills.coding}, Bugfixing ${emp.skills.bugfixing}</div>
@@ -1309,7 +1388,7 @@ class Game {
     }
 
     renderEmployeeModal(employee) {
-        employeeModalName.textContent = employee.name;
+        employeeModalName.textContent = this.formatEmployeeLabel(employee);
         employeeModalRole.textContent = employee.roleLabel;
         employeeModalCurrentSalary.textContent = this.formatMoney(employee.currentSalary);
         employeeModalMarketSalary.textContent = this.formatMoney(employee.marketSalary);
@@ -1391,6 +1470,7 @@ class Game {
             return;
         }
         this.state.employees.forEach(emp => {
+            const label = this.formatEmployeeLabel(emp);
             const card = document.createElement('div');
             card.classList.add('global-stats-item');
             const mood = emp.moodScore || 0;
@@ -1399,7 +1479,7 @@ class Game {
             const promoBadge = emp.promotionRequest ? `<span class="status-badge status-promo">Ждёт повышение</span>` : '';
             card.innerHTML = `
                 <div class="global-stats-header">
-                    <strong>${emp.name}</strong>
+                    <strong>${label}</strong>
                     <span class="mood-chip ${this.getMoodClass(mood)}">${this.describeMood(mood, emp)}</span>
                 </div>
                 <div class="global-stats-footer">
@@ -1503,7 +1583,7 @@ class Game {
             moneyChange: 0,
             reputationChange: 0
         });
-        this.print(`[${employee.name}] ${message}.`, delta > 0 ? 'success' : 'warning');
+        this.print(`[${this.formatEmployeeLabel(employee)}] ${message}.`, delta > 0 ? 'success' : 'warning');
         this.renderEmployeeModal(employee);
         this.refreshAllPanels();
     }
@@ -1583,6 +1663,18 @@ class Game {
         saveState(this.state);
     }
 
+    formatEmployeeLabel(employee, { withRole = false } = {}) {
+        if (!employee) {
+            return 'Сотрудник';
+        }
+        const base = employee.name || 'Сотрудник';
+        const suffix = employee.id ? ` #${employee.id}` : '';
+        if (withRole && employee.roleLabel) {
+            return `${base}${suffix} (${employee.roleLabel})`;
+        }
+        return `${base}${suffix}`;
+    }
+
     formatMoney(value) {
         return Number(value || 0).toLocaleString('ru-RU');
     }
@@ -1604,14 +1696,14 @@ class Game {
             return false;
         }
         const [fired] = this.state.employees.splice(index, 1);
-        this.print(`Сотрудник ${fired.name} (${fired.roleLabel}) уволен.`, 'warning');
+        this.print(`Сотрудник ${this.formatEmployeeLabel(fired)} (${fired.roleLabel}) уволен.`, 'warning');
         this.refreshAllPanels();
         return true;
     }
 
     openFireModal(employee) {
         this.employeeIdPendingFire = employee.id;
-        fireConfirmName.textContent = employee.name;
+        fireConfirmName.textContent = this.formatEmployeeLabel(employee);
         fireConfirmRole.textContent = employee.roleLabel;
         fireConfirmModal.classList.add('visible');
         fireConfirmModal.setAttribute('aria-hidden', 'false');
