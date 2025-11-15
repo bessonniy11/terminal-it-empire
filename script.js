@@ -24,6 +24,7 @@ const employeeModalMood = document.getElementById('employee-modal-mood');
 const employeeModalWarning = document.getElementById('employee-modal-warning');
 const employeeEventsList = document.getElementById('employee-events-list');
 const employeeSalaryInput = document.getElementById('employee-salary-input');
+const employeeSalaryError = document.getElementById('employee-salary-error');
 const saveEmployeeSalaryBtn = document.getElementById('save-employee-salary');
 const closeEmployeeModalBtn = document.getElementById('close-employee-modal');
 const openGlobalStatsBtn = document.getElementById('open-global-stats');
@@ -1094,6 +1095,9 @@ class Game {
             employeeModalWarning.textContent = 'Предупреждений нет.';
             employeeModalWarning.classList.remove('warning-active');
         }
+        if (employeeSalaryError) {
+            employeeSalaryError.textContent = '';
+        }
         this.renderEmployeeEventsList(employee);
     }
 
@@ -1189,9 +1193,8 @@ class Game {
     }
 
     getMinimumSalary(employee) {
-        const basedOnCurrent = Math.round((employee.currentSalary || 0) * 0.2);
-        const basedOnMarket = Math.round((employee.marketSalary || employee.baseSalary || 0) * 0.5);
-        return Math.max(50, basedOnCurrent, basedOnMarket);
+        const base = employee.marketSalary || employee.baseSalary || 0;
+        return Math.max(50, Math.round(base * 0.8));
     }
 
     handleEmployeeSalarySave() {
@@ -1215,8 +1218,15 @@ class Game {
 
         const minAllowed = this.getMinimumSalary(employee);
         if (newSalary < minAllowed) {
-            this.print(`Нельзя снижать зарплату ниже $${this.formatMoney(minAllowed)} (не менее 20% от текущей).`, 'warning');
+            const msg = `Нельзя снижать зарплату ниже $${this.formatMoney(minAllowed)} (80% от рыночной).`;
+            if (employeeSalaryError) {
+                employeeSalaryError.textContent = msg;
+            }
+            this.print(msg, 'warning');
             return;
+        }
+        if (employeeSalaryError) {
+            employeeSalaryError.textContent = '';
         }
 
         const delta = newSalary - employee.currentSalary;

@@ -1053,6 +1053,13 @@ body {
     color: #909090;
 }
 
+.salary-error {
+    margin: 0;
+    color: #ff9a9a;
+    font-size: 0.8em;
+    min-height: 1.2em;
+}
+
 .employee-events h4 {
     margin: 0 0 10px;
     color: #fff;
